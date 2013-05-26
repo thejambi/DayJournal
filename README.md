@@ -1,0 +1,4 @@
+DayJournal
+==========
+
+DayJournal for Ubuntu

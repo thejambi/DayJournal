@@ -68,6 +68,8 @@ public class Main : Window {
 	private Gtk.Menu helpMenu;
 //	private Gtk.Menu menuKeyboardShortcuts;
 //	private Gtk.MenuItem menuAbout;
+	private Gtk.MenuToolButton openButton;
+	private Gtk.Menu openJournalsMenu;
 
 	private Gdk.RGBA selectionColor;
 	private Gdk.RGBA lockedBgColor;
@@ -205,6 +207,12 @@ public class Main : Window {
 		
 		var toolbar = new Toolbar();
 		this.unlockButton = new ToolButton(null, null);
+
+
+		/// HEY THERE MAN! THIS IS JUST FOR TESTING!!!
+		elementaryHackTime = true;
+
+		
 		if (elementaryHackTime) {
 			// Create toolbar
 			toolbar.set_style(ToolbarStyle.ICONS);
@@ -212,11 +220,19 @@ public class Main : Window {
 			context.add_class(Gtk.STYLE_CLASS_PRIMARY_TOOLBAR);
 
 //			var openButton = new ToolButton(null, "Change Journal Folder...");
-			var openButton = new ToolButton.from_stock(Stock.OPEN);
+			/*var openButton = new ToolButton.from_stock(Stock.OPEN);
+			openButton.tooltip_text = "Change journal folder";
+			openButton.clicked.connect(() => {
+				this.menuChangeDjDirClicked();
+			});*/
+			this.openButton = new MenuToolButton.from_stock(Stock.OPEN);
 			openButton.tooltip_text = "Change journal folder";
 			openButton.clicked.connect(() => {
 				this.menuChangeDjDirClicked();
 			});
+
+			// Set up Open Journals menu
+			this.setOpenJournalsMenuItems();
 
 //			this.unlockButton = new ToolButton(null, "Unlock Entry");
 			this.unlockButton = new ToolButton.from_stock(Stock.EDIT);
@@ -384,6 +400,35 @@ public class Main : Window {
 		this.key_press_event.connect((window,event) => { return this.onKeyPress(event); });
 
 		this.destroy.connect(() => { this.on_destroy(); });
+	}
+
+	// Change for DayJournal
+	private void setOpenJournalsMenuItems() {
+		this.openJournalsMenu = new Gtk.Menu();
+		
+		// Add list of user's journals to menu
+		foreach (string s in UserData.getJournalList()) {
+			var menuItem = new Gtk.MenuItem.with_label(s);
+			menuItem.activate.connect(() => {
+				this.setJournalDir(s);
+			});
+			
+			this.openJournalsMenu.append(menuItem);
+		}
+
+		// Then, add the "Add" and "Remove" options
+		var rememberJournal = new Gtk.MenuItem.with_label("Remember current journal");
+		rememberJournal.activate.connect(() => { this.rememberCurrentJournal(); });
+		
+		var forgetJournal = new Gtk.MenuItem.with_label("Forget current journal");
+		forgetJournal.activate.connect(() => { this.forgetCurrentJournal(); });
+
+		this.openJournalsMenu.append(new Gtk.SeparatorMenuItem());
+		this.openJournalsMenu.append(rememberJournal);
+		this.openJournalsMenu.append(forgetJournal);
+
+		this.openButton.set_menu(openJournalsMenu);
+		this.openJournalsMenu.show_all();
 	}
 
 	private void lockEntry() {
@@ -742,12 +787,16 @@ public class Main : Window {
 												Stock.OPEN, ResponseType.ACCEPT);
 		if (fileChooser.run() == ResponseType.ACCEPT) {
 			string dirPath = fileChooser.get_filename();
-			UserData.setDjDir(dirPath);
-			this.setDjDirLocationMenuLabel();
-			// Open new entry for the selected date from the new location
-			this.daySelected();
+			this.setJournalDir(dirPath);
 		}
 		fileChooser.destroy();
+	}
+
+	private void setJournalDir(string dirPath) {
+		UserData.setDjDir(dirPath);
+		this.setDjDirLocationMenuLabel();
+		// Open new entry for the selected date from the new location
+		this.daySelected();
 	}
 
 	private void setDjDirLocationMenuLabel() {
@@ -811,6 +860,16 @@ public class Main : Window {
 
 	private void menuLockPastEntriesToggled(CheckMenuItem menu) {
 		UserData.setLockPastEntries(menu.active);
+	}
+
+	private void rememberCurrentJournal() {
+		UserData.rememberCurrentJournal();
+		this.setOpenJournalsMenuItems();
+	}
+
+	private void forgetCurrentJournal() {
+		UserData.forgetCurrentJournal();
+		this.setOpenJournalsMenuItems();
 	}
 
 	/*

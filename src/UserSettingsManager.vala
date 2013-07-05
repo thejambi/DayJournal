@@ -38,6 +38,7 @@ class UserSettingsManager : Object {
 	public static const string windowHeightKey = "height";
 	public static const string calendarFontSizeKey = "calFontSize";
 	public static const string fontSizeKey = "fontSize";
+	public static const string journalsGroup = "Journals";
 
 	/**
 	 * Constructor.
@@ -161,6 +162,26 @@ class UserSettingsManager : Object {
 		} catch (KeyFileError e) {
 			Zystem.debug("Failed to delete some settings.");
 		}
+	}
+
+	public void addJournal(string name, string path) {
+		keyFile.set_string(this.journalsGroup, name, path);
+		writeKeyFile();
+	}
+
+	public void removeJournal(string name) {
+		keyFile.remove_key(this.journalsGroup, name);
+		writeKeyFile();
+	}
+
+	public ArrayList<string> getJournalList() {
+		var list = new ArrayList<string>();
+
+		foreach (string s in keyFile.get_keys(this.journalsGroup)) {
+			list.add(s);
+		}
+
+		return list;
 	}
 
 }

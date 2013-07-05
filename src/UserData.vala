@@ -111,5 +111,17 @@ class UserData : Object {
 		settings.deleteUISettings();
 	}
 
+	public static void rememberCurrentJournal() {
+		settings.addJournal(djDirPath, djDirPath);
+	}
+
+	public static void forgetCurrentJournal() {
+		settings.removeJournal(djDirPath);
+	}
+
+	public static ArrayList<string> getJournalList() {
+		return settings.getJournalList();
+	}
+
 	
 }

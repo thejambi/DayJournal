@@ -38,7 +38,8 @@ class UserData : Object {
 	public static void initializeUserData() {
 
 		defaultDjDirName = "DayJournal";
-		seldomSave = true;
+		/*seldomSave = true;*/
+		seldomSave = false;
 
 		homeDirPath = Environment.get_home_dir();
 

@@ -25,7 +25,7 @@ class FileUtility : GLib.Object {
 	/**
 	 * Create a folder (or make sure it exists).
 	 */
-	public static void createFolder(string dirPath){
+	public static void createFolder(string dirPath) {
 		// Create the directory. This method doesn't care if it exists already or not.
 		GLib.DirUtils.create_with_parents(dirPath, 0775);
 	}
@@ -33,9 +33,33 @@ class FileUtility : GLib.Object {
 	/**
 	 * Return the file extension from the given fileInfo.
 	 */
-	public static string getFileExtension(FileInfo file){
+	public static string getFileExtension(FileInfo file) {
 		string fileName = file.get_name();
+		return getFileExtensionFromString(fileName);
+	}
+
+	/**
+	 * Return the file extension from the given string filename.
+	 */
+	public static string getFileExtensionFromString(string fileName) {
 		return fileName.substring(fileName.last_index_of("."));
+	}
+
+	public static string getNewStyleBlipDay(string filename) {
+		return filename.substring(0, 2);
+	}
+
+	public static string getFileNameWithoutExtension(string fileName) {
+		Zystem.debug("FILENAMEWITHOUTEXTENSION " + fileName.slice(0, fileName.index_of(getFileExtensionFromString(fileName))));
+		return fileName.slice(0, fileName.index_of(getFileExtensionFromString(fileName)));
+	}
+
+	/**
+	 * Return true if FileInfo represents an image file.
+	 */
+	public static bool isImageFile(FileInfo file) {
+		var ext = getFileExtension(file);
+		return ext == ".jpg" || ext == ".png" || ext == ".gif";
 	}
 
 	/**
@@ -67,7 +91,35 @@ class FileUtility : GLib.Object {
 		return Path.build_path(Path.DIR_SEPARATOR_S, pathStart, pathEnd);
 	}
 
+	public static bool isDirectory(string path) {
+		File dir = File.new_for_path(path);
+		try {
+			FileInfo fileInfo = dir.query_info("*",0);
+			return fileInfo.get_file_type() == FileType.DIRECTORY;
+		} catch (Error e) {
+			return false;
+		}
+	}
 
+	/**
+	 * Get the file path with the unique timestamp inserted at end of 
+	 * filename before file extension.
+	 */
+	public static string addTimestampToFilePath(string filePath) {
+		DateTime dateTime = new GLib.DateTime.now_local();
+
+		string pathPrefix = filePath.substring(0, filePath.last_index_of("."));
+		string fileExt = filePath.substring(filePath.last_index_of("."));
+		string timestamp = dateTime.format("_%Y%m%d_%H%M%S");
+
+		return pathPrefix + timestamp + fileExt;
+	}
+
+	public static string getPathFromImgTag(string imgTag) {
+		var textICareAbout = imgTag.substring(imgTag.index_of("src='"));
+		string[] chunks = textICareAbout.split("'");
+		return chunks[1];
+	}
 
 
 	

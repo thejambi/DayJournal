@@ -24,18 +24,46 @@ using Gee;
 public class JournalArchiver : GLib.Object {
 
 	// Variables
+	public static const string TYPE_HTML = "html";
+	public static const string TYPE_TEXT = "txt";
+	
 	private Map<int, YearFolder> yearFolders;
 	public string archiveFilePath { get; private set; }
-	private string archiveType = "html";
+	public string archiveFilePathMonthly { get; private set; }
+	public string archiveDirPathMonthly { get; private set; }
+	private string archiveType;
 	
     // Constructor
-    public JournalArchiver() {
+    public JournalArchiver(string type) {
+		this.archiveType = type;
 		this.yearFolders = new TreeMap<int, YearFolder>();
 		this.archiveFilePath = "";
     }
 
 	/*public void createArchiveFileFromDateRange(DateTime startDate, DateTime endDate) {
 		//
+	}*/
+
+	/*public void createMonthlyArchives() {
+		Zystem.debug("Creating Monthly archives.");
+
+		string path = UserData.getArchiveDirPath();
+		FileUtility.createFolder(path);
+
+		try {
+			File djDir = File.new_for_path(UserData.djDirPath);
+			FileEnumerator enumerator = djDir.enumerate_children(FileAttribute.STANDARD_NAME, 0);
+			FileInfo fileInfo;
+
+			while ((fileInfo = enumerator.next_file()) != null) {
+				if (fileInfo.get_file_type() == FileType.DIRECTORY) {
+					File subdir = djDir.resolve_relative_path(fileInfo.get_name());
+					processYearDirMonthly(fileInfo, subdir);
+				}
+			}
+		} catch (Error e) {
+			stderr.printf("Error creating archive file. Error: %s\n", e.message);
+		}
 	}*/
 
 	public void createCompleteArchiveFile() {
@@ -106,8 +134,15 @@ public class JournalArchiver : GLib.Object {
 
 		Zystem.debug("I found a month folder for " + monthDirInfo.get_name());
 
+		this.setMonthlyArchiveDirPath(yearFolder.year);
+		this.setMonthlyArchiveFilename(yearFolder.year,  monthDirInfo.get_name());
+
 		int month = int.parse(monthDirInfo.get_name());
 		int year = yearFolder.year;
+
+		if (this.archiveType == "html") {
+			this.beginHtmlMonthlyArchiveFile();
+		}
 		
 		MonthFolder monthFolder = new MonthFolder(monthDirInfo);
 		
@@ -126,6 +161,8 @@ public class JournalArchiver : GLib.Object {
 			}
 		}
 
+		this.writeMonthlyEntriesToArchiveFile(monthFolder);
+
 		yearFolder.addMonth(month, monthFolder);
 	}
 
@@ -143,6 +180,30 @@ public class JournalArchiver : GLib.Object {
 		html += ".entry { margin: 1em 1em 2.5em 1em; line-height: 150%; border-top: 1px solid #555; } ";
 		
 		html += ".entryHeading { margin-left: 0.5em; margin-bottom: 0.7em; padding: 0 0.7em 1.3em 0.3em; display: block; "; 		html += "float: right; font-size: 1.2em; border-left: 1px solid #555; line-height: 90%; } ";
+
+		html += ".dayjournalimage { max-width: 400px; max-height: 400px; } ";
+		
+		html += "</style> ";
+		html += "</head><body> ";
+		
+		this.appendStringToArchiveFile(fileStream, html);
+	}
+
+	private void beginHtmlMonthlyArchiveFile() {
+		string path = this.getMonthlyArchiveFilePath();
+		File file = File.new_for_path(path);
+		FileOutputStream fileStream = file.append_to(FileCreateFlags.NONE);
+
+		string html = "<html><head><title>Complete Journal Archive</title> ";
+
+		html += "<style> ";
+		html += "@media print { .entry { display: block; position: relative; page-break-inside:avoid; page-break-after: auto; } } ";
+		html += "body { font-family: Ubuntu,'Droid Sans',Verdana,Geneva,sans-serif; font-size: 1em; } ";
+		html += ".entry { margin: 1em 1em 2.5em 1em; line-height: 150%; border-top: 1px solid #555; } ";
+		
+		html += ".entryHeading { margin-left: 0.5em; margin-bottom: 0.7em; padding: 0 0.7em 1.3em 0.3em; display: block; "; 		html += "float: right; font-size: 1.2em; border-left: 1px solid #555; line-height: 90%; } ";
+
+		html += ".dayjournalimage { max-width: 400px; max-height: 400px; } ";
 		
 		html += "</style> ";
 		html += "</head><body> ";
@@ -180,6 +241,46 @@ public class JournalArchiver : GLib.Object {
 		}
 	}
 
+	private void writeMonthlyEntriesToArchiveFile(MonthFolder monthFolder) {
+		// Get the path and File object
+		string path = this.getMonthlyArchiveFilePath();
+		Zystem.debug("Hello. The path is THISSSSSS: " + path);
+		File file = File.new_for_path(path);
+		FileOutputStream fileStream = file.append_to(FileCreateFlags.NONE);
+
+		int x = 9 / 0;
+
+		// Loop it!
+		foreach (Map.Entry<int, JournalEntry> entryEntry in monthFolder.entryMap.entries) {
+			Zystem.debug(entryEntry.value.day.to_string());
+			this.writeJournalEntry(fileStream, entryEntry.value);
+		}
+	}
+
+	private string getMonthlyArchiveFilePath() {
+		string path = UserData.getArchiveDirPath();
+		path = FileUtility.pathCombine(path, this.archiveDirPathMonthly);
+		path = FileUtility.pathCombine(path, this.archiveFilePathMonthly);
+		return path;
+	}
+
+	private void setMonthlyArchiveDirPath(int year) {
+		DateTime dateTime = new GLib.DateTime.now_local();
+		string path = "MonthlyArchives_" + dateTime.format("%Y-%m-%d");
+		this.archiveDirPathMonthly = FileUtility.pathCombine(path, year.to_string());
+		FileUtility.createFolder(FileUtility.pathCombine(UserData.getArchiveDirPath(), this.archiveDirPathMonthly));
+	}
+
+	private void setMonthlyArchiveFilename(int year, string month) {
+		string filename = year.to_string() + month + "_Journal";
+
+		if (this.archiveType == "txt") {
+			this.archiveFilePathMonthly = filename + ".txt";
+		} else {
+			this.archiveFilePathMonthly = filename + ".html";
+		}
+	}
+
 	private void setCompleteArchiveFilename() {
 		string filename = "CompleteJournalArchive_";
 
@@ -197,16 +298,22 @@ public class JournalArchiver : GLib.Object {
 
 	private void writeJournalEntry(FileOutputStream fileStream, JournalEntry entry) {
 		if (this.archiveType == "txt") {
-			string entryHeading = "\n\n------------------\n";
-			entryHeading = entryHeading + entry.year.to_string() + "-" + entry.month.to_string() + "-" + entry.day.to_string();
-			entryHeading = entryHeading + "\n----\n\n";
+			string entryHeading = "\n\n-----------------------------------\n";
+			string dateString = entry.year.to_string() + "-" + entry.month.to_string() + "-" + entry.day.to_string();
+			entryHeading = entryHeading + dateString;
+//			entryHeading = entryHeading + "\n----\n\n";
+			entryHeading = entryHeading + "\n";
+			for (int i = 0; i < dateString.length; i++) {
+				entryHeading = entryHeading + "-";
+			}
+			entryHeading = entryHeading + "\n\n";
 
 			this.appendStringToArchiveFile(fileStream, entryHeading);
 			this.appendStringToArchiveFile(fileStream, entry.getFileContents());
 		} else {
 			string entryHtml = "<div class='entry'>";
 			entryHtml += "<div class='entryHeading'>" + entry.year.to_string() + "-" + entry.month.to_string() + "-" + entry.day.to_string() + "</div>";
-			entryHtml += entry.getFileContents().replace("\n", "<br />");
+			entryHtml += entry.getFileContents().replace("\n", "<br />").replace("<img class='dayjournalimage' src='../", "<img class='dayjournalimage' src='../../../");
 			entryHtml += "</div>";
 
 			this.appendStringToArchiveFile(fileStream, entryHtml);
@@ -217,6 +324,7 @@ public class JournalArchiver : GLib.Object {
 		uint8[] data;
 		if (this.archiveType == "html") {
 			data = text.replace("’", "&apos;").data;
+//			data = text.replace("&", "&amp;").data; // Test this later, it might be good
 		} else {
 			data = text.data;
 		}

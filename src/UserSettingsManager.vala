@@ -32,13 +32,18 @@ class UserSettingsManager : Object {
 	string djConfPath;
 
 	public static const string djDirKey = "djDirectory";
+	public static const string importJournalDirKey = "importJournalDirectory";
+	public static const string blipDirKey = "blipDirectory";
 	public static const string djGroup = "DayJournal";
+	public static const string journalsGroup = "Journals";
 	public static const string lockPastEntriesKey = "lockPastEntries";
 	public static const string windowWidthKey = "width";
 	public static const string windowHeightKey = "height";
 	public static const string calendarFontSizeKey = "calFontSize";
-	public static const string fontSizeKey = "fontSize";
-	public static const string journalsGroup = "Journals";
+//	public static const string fontSizeKey = "fontSize";
+	public static const string lastBlipLoadDateKey = "lastBlipLoadDate";
+	public static const string NONE = "NONE";
+	public static const string fontKey = "font";
 
 	/**
 	 * Constructor.
@@ -89,8 +94,24 @@ class UserSettingsManager : Object {
 		} catch (KeyFileError e) {
 			// Set default
 			UserData.djDirPath = UserData.getDefaultDjDir();
+			FileUtility.createFolder(UserData.djDirPath);
+			UserData.rememberCurrentJournalAfterInit = true;
 		}
 
+		try {
+			UserData.importJournalPath = keyFile.get_string(djGroup , importJournalDirKey);
+		} catch (KeyFileError e) {
+			// Set default
+			UserData.importJournalPath = "";
+		}
+
+		try {
+			UserData.blipDirPath = keyFile.get_string(djGroup , blipDirKey);
+		} catch (KeyFileError e) {
+			// Set default
+			UserData.blipDirPath = "";
+		}
+		
 		try {
 			UserData.lockPastEntries = keyFile.get_boolean(djGroup , lockPastEntriesKey);
 		} catch (KeyFileError e) {
@@ -111,10 +132,22 @@ class UserSettingsManager : Object {
 			Zystem.debug("No saved calendar font size.");
 		}
 
-		try {
+		/*try {
 			UserData.fontSize = keyFile.get_integer(djGroup , fontSizeKey);
 		} catch (KeyFileError e) {
 			Zystem.debug("No saved font size.");
+		}*/
+
+		try {
+			UserData.fontString = keyFile.get_string(djGroup, fontKey);
+		} catch (KeyFileError e) {
+			UserData.fontString = "";
+		}
+
+		try {
+			UserData.lastBlipLoadDate = int64.parse(keyFile.get_string(djGroup , lastBlipLoadDateKey));
+		} catch (KeyFileError e) {
+			Zystem.debug("No saved last blip load date.");
 		}
 		
 		// Return true if the keyFile data has been updated (if it's no longer the same as it was)
@@ -152,12 +185,23 @@ class UserSettingsManager : Object {
 		writeKeyFile();
 	}
 
+	public void setString(string key, string val) {
+		keyFile.set_string(djGroup, key, val);
+		writeKeyFile();
+	}
+
+	/*public void removeKey(string key) {
+		keyFile.remove_key(djGroup, key);
+		writeKeyFile();
+	}*/
+
 	public void deleteUISettings() {
 		try {
 			keyFile.remove_key(djGroup, windowWidthKey);
 			keyFile.remove_key(djGroup, windowHeightKey);
 			keyFile.remove_key(djGroup, calendarFontSizeKey);
-			keyFile.remove_key(djGroup, fontSizeKey);
+//			keyFile.remove_key(djGroup, fontSizeKey);
+			keyFile.remove_key(djGroup, fontKey);
 			this.writeKeyFile();
 		} catch (KeyFileError e) {
 			Zystem.debug("Failed to delete some settings.");

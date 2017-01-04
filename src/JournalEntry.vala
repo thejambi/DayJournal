@@ -18,15 +18,18 @@
  */
 
 using GLib;
+using Gtk;
 
 public class JournalEntry : Object {
 
 	// Variables
 	string yearDirPath;
+	public string archiveRelativeMonthPath { get; private set; }
 	public string monthDirPath { get; private set; }
 	public string filePath { get; private set; }
 	File entryFile;
 	private int saveCounter;
+	private EntryImageAnchors images;
 
 	public bool fileSavingLock { get; private set; default = false; }
 	public bool fileSaveRequested { get; private set; default = false; }
@@ -52,12 +55,26 @@ public class JournalEntry : Object {
 
 		this.yearDirPath = Path.build_path(Path.DIR_SEPARATOR_S, this.getDayJournalDirectory(), year.to_string("%04i"));
 		this.monthDirPath = Path.build_path(Path.DIR_SEPARATOR_S, this.yearDirPath, month.to_string("%02i"));
-		this.filePath = Path.build_path(Path.DIR_SEPARATOR_S, this.monthDirPath, day.to_string("%02i") + ".txt");
+		this.filePath = Path.build_path(Path.DIR_SEPARATOR_S, this.monthDirPath, this.getDayString() + ".txt");
 		this.entryFile = File.new_for_path(this.filePath);
 
-		Zystem.debug(this.filePath);
+		this.archiveRelativeMonthPath = Path.build_path(Path.DIR_SEPARATOR_S, "..", year.to_string("%04i"), month.to_string("%02i"));
+
+		//Zystem.debug("JournalEntry object created for: " + this.filePath);
 
 		this.saveCounter = 0;
+
+		this.images = new EntryImageAnchors();
+	}
+
+	public void addImage(string relativePath, string fullPath, Image img, TextChildAnchor anchor, TextBuffer buffer) {
+		this.images.add(relativePath, fullPath, img, anchor, buffer);
+	}
+
+	public string replaceImagesWithTags(TextBuffer buffer) {
+		var txt = this.images.replaceImagesWithTags(buffer);
+		Zystem.debug("Got replaced text: " + txt);
+		return txt;
 	}
 
 	private string getDayJournalDirectory() {
@@ -74,10 +91,16 @@ public class JournalEntry : Object {
 		}
 	}
 
-	public async void saveEntryFile(string entryText) throws GLib.Error {
+	public async void saveEntryFile(TextBuffer buffer) throws GLib.Error {
 		
 		var monthDir = File.new_for_path(this.monthDirPath);
-		
+
+		string entryText = this.replaceImagesWithTags(buffer);
+/*
+		// ZLB
+		ImageSaveChecker.afterText = entryText;
+		ImageSaveChecker.test();
+		*/
 		if (entryText == "") {
 			this.removeEntryFile();
 		} else {
@@ -90,9 +113,9 @@ public class JournalEntry : Object {
 	}
 
 	private async void saveFileContentsAsync(string entryText) throws GLib.Error {
-		Zystem.debug("ACTUALLY SAVING FILE");
+		//Zystem.debug("ACTUALLY SAVING FILE");
 		yield this.entryFile.replace_contents_async(entryText.data, null, false, FileCreateFlags.NONE, null, null);
-		Zystem.debug("SAVE COUNTER IS: " + (++this.saveCounter).to_string());
+		//Zystem.debug("SAVE COUNTER IS: " + (++this.saveCounter).to_string());
 	}
 
 	public void saveEntryFileNonAsync(string entryText) throws GLib.Error {
@@ -109,10 +132,19 @@ public class JournalEntry : Object {
 		}
 	}
 
+	public void createPath() {
+		var monthDir = File.new_for_path(this.monthDirPath);
+		
+		// Make sure monthDirPath exists because it might have been empty and removed
+		if (!monthDir.query_exists()) {
+			GLib.DirUtils.create_with_parents(this.monthDirPath, 0775);
+		}
+	}
+
 	private void saveFileContents(string entryText) throws GLib.Error {
-		Zystem.debug("ACTUALLY SAVING FILE");
+		//Zystem.debug("ACTUALLY SAVING FILE");
 		this.entryFile.replace_contents(entryText.data, null, false, FileCreateFlags.NONE, null, null);
-		Zystem.debug("SAVE COUNTER IS: " + (++this.saveCounter).to_string());
+		//Zystem.debug("SAVE COUNTER IS: " + (++this.saveCounter).to_string());
 	}
 
 	private void removeEntryFile() {
@@ -157,9 +189,10 @@ public class JournalEntry : Object {
 	public string getEntryDateHeading() {
 		return dateTime.format("%B %e, %Y\n\n");
 	}
+
+	public string getDayString() {
+		return day.to_string("%02i");
+	}
 	
 }
-
-
-
 

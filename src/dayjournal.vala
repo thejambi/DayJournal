@@ -26,7 +26,7 @@ using Notify;
 public class Main : Window {
 
 	// SET THIS TO TRUE BEFORE BUILDING TARBALL
-	private const bool isInstalled = false;
+	private const bool isInstalled = true;
 
 	private const string shortcutsText = 
 			"Ctrl+L: Go to next day\n" + 
@@ -51,14 +51,13 @@ public class Main : Window {
 	private TextView entryTextView;
 	
 //	private int startingFontSize;
-	private int fontSize;
+//	private int fontSize;
 	
 	private bool isOpening;
 	private bool needsSave = false;
 	private bool entryLocked = false;
 	private string lastKeyName;
 
-	private MenuBar menubar;
 	private Gtk.Menu journalMenu;
 	private Gtk.Menu settingsMenu;
 	private Gtk.MenuItem menuChangeDjDir;
@@ -70,6 +69,8 @@ public class Main : Window {
 //	private Gtk.MenuItem menuAbout;
 	private Gtk.MenuToolButton openButton;
 	private Gtk.Menu openJournalsMenu;
+
+	private Gtk.MenuItem journalsMenuItem;
 
 	private Gdk.RGBA selectionColor;
 	private Gdk.RGBA lockedBgColor;
@@ -95,6 +96,10 @@ public class Main : Window {
 		this.lastKeyName = "";
 
 		this.title = "DayJournal";  // Add location? Maybe that isn't as cool
+		var headerBar = new Gtk.HeaderBar();
+		headerBar.set_title("DayJournal");
+		headerBar.set_show_close_button(true);
+		this.set_titlebar(headerBar);
 		this.window_position = WindowPosition.CENTER;
 		//set_default_size (550, 430);
 		set_default_size(UserData.windowWidth, UserData.windowHeight);
@@ -103,35 +108,38 @@ public class Main : Window {
 			// Record window size if not maximized
 			if (!(Gdk.WindowState.MAXIMIZED in this.get_window().get_state())) {
 				this.get_size(out this.width, out this.height);
-			} else {
-				Zystem.debug("Window maximized, no save window size!");
 			}
 			return false;
 		});
 
-		// Create menu
-		menubar = new MenuBar();
-		
 		// Set up Journal menu
 		journalMenu = new Gtk.Menu();
 		menuChangeDjDir = new Gtk.MenuItem.with_label("Change Journal Folder");
 		menuChangeDjDir.activate.connect(() => { menuChangeDjDirClicked(); });
 		menuOpenDjLocation = new Gtk.MenuItem.with_label("View Current Journal Files");
 		menuOpenDjLocation.activate.connect(() => { menuOpenDjLocationClicked(); });
+		var menuAddImage = new Gtk.MenuItem.with_label("Add Image to Entry");
+		menuAddImage.activate.connect(() => { this.chooseImage(); });
 		menuCreateJournalArchive = new Gtk.MenuItem.with_label("Create Complete Journal Archive");
-		menuCreateJournalArchive.activate.connect(() => { this.createCompleteJournalArchive(); });
+		menuCreateJournalArchive.activate.connect(() => { this.createCompleteJournalArchive(JournalArchiver.TYPE_HTML); });
 		menuClose = new Gtk.MenuItem.with_label("Close DayJournal");
 		menuClose.activate.connect(() => { this.on_destroy(); });
 		journalMenu.append(menuChangeDjDir);
 		journalMenu.append(menuOpenDjLocation);
 		journalMenu.append(new SeparatorMenuItem());
+		journalMenu.append(menuAddImage);
+		journalMenu.append(new SeparatorMenuItem());
 		journalMenu.append(menuCreateJournalArchive);
 		journalMenu.append(new SeparatorMenuItem());
 		journalMenu.append(menuClose);
 
-		var journalMenuItem = new Gtk.MenuItem.with_label("Journal");
+		var journalMenuItem = new Gtk.MenuItem.with_label("DayJournal");
 		journalMenuItem.set_submenu(journalMenu);
-		menubar.append(journalMenuItem);
+		//menubar.append(journalMenuItem);
+
+		// Set up Journals menu
+		this.journalsMenuItem = new Gtk.MenuItem.with_label("Journals");
+		//menubar.append(this.journalsMenuItem);
 
 		// Set up Settings menu
 		settingsMenu = new Gtk.Menu();
@@ -160,10 +168,15 @@ public class Main : Window {
 		menuDecreaseCalendarFontSize.activate.connect(() => { 
 			this.decreaseCalendarFontSize(); 
 		});
+		var menuChooseFont = new Gtk.MenuItem.with_label("Change Entry Font...");
+		menuChooseFont.activate.connect(() => {
+			this.chooseFont();
+		});
 		settingsMenu.append(menuUnlockEntry);
 		settingsMenu.append(menuIncreaseFontSize);
 		settingsMenu.append(menuDecreaseFontSize);
 		settingsMenu.append(new SeparatorMenuItem());
+		settingsMenu.append(menuChooseFont);
 		settingsMenu.append(menuLockPastEntries);
 		settingsMenu.append(new SeparatorMenuItem());
 		settingsMenu.append(menuIncreaseCalendarFontSize);
@@ -171,7 +184,7 @@ public class Main : Window {
 
 		var settingsMenuItem = new Gtk.MenuItem.with_label("Settings");
 		settingsMenuItem.set_submenu(settingsMenu);
-		menubar.append(settingsMenuItem);
+		//menubar.append(settingsMenuItem);
 
 		// Set up Help menu
 		helpMenu = new Gtk.Menu();
@@ -184,163 +197,127 @@ public class Main : Window {
 
 		var helpMenuItem = new Gtk.MenuItem.with_label("Help");
 		helpMenuItem.set_submenu(helpMenu);
-		menubar.append(helpMenuItem);
 
 		this.entryTextView = new TextView();
 
 		this.selectionColor = this.entryTextView.get_style_context().get_background_color(StateFlags.SELECTED);
-		this.unlockedBgColor = this.entryTextView.get_style_context().get_background_color(StateFlags.NORMAL);
+		this.unlockedBgColor = this.entryTextView.get_style_context().get_background_color(StateFlags.ACTIVE);
 		this.lockedBgColor = this.get_style_context().get_background_color(StateFlags.NORMAL);
-
-		bool elementaryHackTime = false;
 		
 		if (this.unlockedBgColor.to_string() == this.lockedBgColor.to_string()) {
 			this.unlockedBgColor = Gdk.RGBA();
 			this.unlockedBgColor.parse("#FFFFFF");
-			Zystem.debug("Hi. Your theme was wrong so I am just using white for you to write on.");
-			elementaryHackTime = true;
-		} else {
-			Zystem.debug(this.unlockedBgColor.to_string());
-			Zystem.debug(this.lockedBgColor.to_string());
 		}
 
-		
-		var toolbar = new Toolbar();
 		this.unlockButton = new ToolButton(null, null);
 
+		this.openButton = new MenuToolButton.from_stock(Stock.OPEN);
+		openButton.tooltip_text = "Change journal folder";
+		openButton.clicked.connect(() => {
+			this.menuChangeDjDirClicked();
+		});
 
-		/// HEY THERE MAN! THIS IS JUST FOR TESTING!!!
-		elementaryHackTime = true;
+		// Set up Open Journals menu
+		this.setOpenJournalsMenuItems();
 
+		this.unlockButton = new ToolButton.from_stock(Stock.EDIT);
+		unlockButton.tooltip_text = "Unlock entry";
+		unlockButton.clicked.connect(() => {
+			this.unlockEntry();
+		});
+
+		var addImageButton = new ToolButton.from_stock(Stock.ADD);
+		addImageButton.tooltip_text = "Add image to entry";
+		addImageButton.clicked.connect(() => {
+			this.chooseImage();
+		});
+
+		var increaseFontSizeButton = new ToolButton.from_stock(Stock.ZOOM_IN);
+		increaseFontSizeButton.tooltip_text = "Increase font size";
+		increaseFontSizeButton.clicked.connect(() => {
+			this.increaseFontSize();
+		});
+
+		var decreaseFontSizeButton = new ToolButton.from_stock(Stock.ZOOM_OUT);
+		decreaseFontSizeButton.tooltip_text = "Decrease font size";
+		decreaseFontSizeButton.clicked.connect(() => {
+			this.decreaseFontSize();
+		});
+
+		var settingsMenuButton = new MenuToolButton.from_stock(Stock.INFO);
+
+		// Set up Settings menu
+		var settingsMenu = new Gtk.Menu();
+		var menuKeyboardShortcutsToolbar = new Gtk.MenuItem.with_label("Keyboard Shortcuts");
+		menuKeyboardShortcutsToolbar.activate.connect(() => {
+			this.menuKeyboardShortcutsClicked();
+		});
+		var menuAboutToolbar = new Gtk.MenuItem.with_label("About DayJournal");
+		menuAboutToolbar.activate.connect(() => {
+			this.menuAboutClicked();
+		});
+
+		// Set up Settings menu
+		settingsMenu = new Gtk.Menu();
+
+		menuCreateJournalArchive = new Gtk.MenuItem.with_label("Create Complete Journal Archive");
+		menuCreateJournalArchive.activate.connect(() => {
+			this.createCompleteJournalArchive(JournalArchiver.TYPE_HTML);
+		});
+
+		var menuCreateJournalArchiveTxt = new Gtk.MenuItem.with_label("Create Plain Text Journal Archive");
+		menuCreateJournalArchiveTxt.activate.connect(() => {
+			this.createCompleteJournalArchive(JournalArchiver.TYPE_TEXT);
+		});
+
+		menuOpenDjLocation = new Gtk.MenuItem.with_label("View Current Journal Files");
+		menuOpenDjLocation.activate.connect(() => {
+			menuOpenDjLocationClicked();
+		});
+
+		menuLockPastEntries = new CheckMenuItem.with_label("Lock past entries by default");
+		menuLockPastEntries.active = UserData.lockPastEntries;
+		menuLockPastEntries.toggled.connect(() => {
+			this.menuLockPastEntriesToggled(menuLockPastEntries);
+		});
+		menuIncreaseCalendarFontSize = new Gtk.MenuItem.with_label("Increase calendar size");
+		menuIncreaseCalendarFontSize.activate.connect(() => { 
+			this.increaseCalendarFontSize(); 
+		});
+		menuDecreaseCalendarFontSize = new Gtk.MenuItem.with_label("Decrease calendar size");
+		menuDecreaseCalendarFontSize.activate.connect(() => { 
+			this.decreaseCalendarFontSize(); 
+		});
+		menuChooseFont = new Gtk.MenuItem.with_label("Change Entry Font...");
+		menuChooseFont.activate.connect(() => {
+			this.chooseFont();
+		});
+
+		settingsMenu.append(menuCreateJournalArchive);
+		settingsMenu.append(menuCreateJournalArchiveTxt);
+		settingsMenu.append(menuOpenDjLocation);
+		settingsMenu.append(new SeparatorMenuItem());
+		settingsMenu.append(menuChooseFont);
+		settingsMenu.append(menuLockPastEntries);
+		settingsMenu.append(new SeparatorMenuItem());
+		settingsMenu.append(menuIncreaseCalendarFontSize);
+		settingsMenu.append(menuDecreaseCalendarFontSize);
+		settingsMenu.append(new SeparatorMenuItem());
+		settingsMenu.append(menuKeyboardShortcutsToolbar);
+		settingsMenu.append(menuAboutToolbar);
+
+		settingsMenuButton.set_menu(settingsMenu);
+
+		settingsMenu.show_all();
+
+		settingsMenuButton.clicked.connect(() => {
+			this.menuAboutClicked();
+		});
 		
-		if (elementaryHackTime) {
-			// Create toolbar
-			toolbar.set_style(ToolbarStyle.ICONS);
-			var context = toolbar.get_style_context();
-			context.add_class(Gtk.STYLE_CLASS_PRIMARY_TOOLBAR);
-
-//			var openButton = new ToolButton(null, "Change Journal Folder...");
-			/*var openButton = new ToolButton.from_stock(Stock.OPEN);
-			openButton.tooltip_text = "Change journal folder";
-			openButton.clicked.connect(() => {
-				this.menuChangeDjDirClicked();
-			});*/
-			this.openButton = new MenuToolButton.from_stock(Stock.OPEN);
-			openButton.tooltip_text = "Change journal folder";
-			openButton.clicked.connect(() => {
-				this.menuChangeDjDirClicked();
-			});
-
-			// Set up Open Journals menu
-			this.setOpenJournalsMenuItems();
-
-//			this.unlockButton = new ToolButton(null, "Unlock Entry");
-			this.unlockButton = new ToolButton.from_stock(Stock.EDIT);
-			unlockButton.tooltip_text = "Unlock entry";
-			unlockButton.clicked.connect(() => {
-				this.unlockEntry();
-			});
-
-			var increaseFontSizeButton = new ToolButton.from_stock(Stock.ZOOM_IN);
-			increaseFontSizeButton.tooltip_text = "Increase font size";
-			increaseFontSizeButton.clicked.connect(() => {
-				this.increaseFontSize();
-			});
-
-			var decreaseFontSizeButton = new ToolButton.from_stock(Stock.ZOOM_OUT);
-			decreaseFontSizeButton.tooltip_text = "Decrease font size";
-			decreaseFontSizeButton.clicked.connect(() => {
-				this.decreaseFontSize();
-			});
-
-//			var settingsMenuButton = new MenuToolButton(null, "Settings");
-			var settingsMenuButton = new MenuToolButton.from_stock(Stock.INFO);
-
-			// Set up Settings menu
-			var settingsMenu = new Gtk.Menu();
-			var menuKeyboardShortcutsToolbar = new Gtk.MenuItem.with_label("Keyboard Shortcuts");
-			menuKeyboardShortcutsToolbar.activate.connect(() => {
-				this.menuKeyboardShortcutsClicked();
-			});
-			var menuAboutToolbar = new Gtk.MenuItem.with_label("About DayJournal");
-			menuAboutToolbar.activate.connect(() => {
-				this.menuAboutClicked();
-			});
-
-			// Set up Settings menu
-			settingsMenu = new Gtk.Menu();
-			/*menuUnlockEntry = new Gtk.MenuItem.with_label("Unlock entry");
-			menuUnlockEntry.activate.connect(() => { 
-				this.unlockEntry();
-			});*/
-			/*menuIncreaseFontSize = new Gtk.MenuItem.with_label("Increase font size");
-			menuIncreaseFontSize.activate.connect(() => { 
-				this.increaseFontSize(); 
-			});
-			menuDecreaseFontSize = new Gtk.MenuItem.with_label("Decrease font size");
-			menuDecreaseFontSize.activate.connect(() => { 
-				this.decreaseFontSize(); 
-			});*/
-
-			menuCreateJournalArchive = new Gtk.MenuItem.with_label("Create Complete Journal Archive");
-			menuCreateJournalArchive.activate.connect(() => {
-				this.createCompleteJournalArchive();
-			});
-
-			menuOpenDjLocation = new Gtk.MenuItem.with_label("View Current Journal Files");
-			menuOpenDjLocation.activate.connect(() => {
-				menuOpenDjLocationClicked();
-			});
-
-			menuLockPastEntries = new CheckMenuItem.with_label("Lock past entries by default");
-			menuLockPastEntries.active = UserData.lockPastEntries;
-			menuLockPastEntries.toggled.connect(() => {
-				this.menuLockPastEntriesToggled(menuLockPastEntries);
-			});
-			menuIncreaseCalendarFontSize = new Gtk.MenuItem.with_label("Increase calendar size");
-			menuIncreaseCalendarFontSize.activate.connect(() => { 
-				this.increaseCalendarFontSize(); 
-			});
-			menuDecreaseCalendarFontSize = new Gtk.MenuItem.with_label("Decrease calendar size");
-			menuDecreaseCalendarFontSize.activate.connect(() => { 
-				this.decreaseCalendarFontSize(); 
-			});
-
-			settingsMenu.append(menuCreateJournalArchive);
-			settingsMenu.append(menuOpenDjLocation);
-			settingsMenu.append(new SeparatorMenuItem());
-			settingsMenu.append(menuLockPastEntries);
-			settingsMenu.append(new SeparatorMenuItem());
-			settingsMenu.append(menuIncreaseCalendarFontSize);
-			settingsMenu.append(menuDecreaseCalendarFontSize);
-			settingsMenu.append(new SeparatorMenuItem());
-			settingsMenu.append(menuKeyboardShortcutsToolbar);
-			settingsMenu.append(menuAboutToolbar);
-
-			settingsMenuButton.set_menu(settingsMenu);
-
-			settingsMenu.show_all();
-
-			settingsMenuButton.clicked.connect(() => {
-				this.menuAboutClicked();
-			});
-
-			toolbar.insert(openButton, -1);
-			toolbar.insert(new SeparatorToolItem(), -1);
-			toolbar.insert(unlockButton, -1);
-			toolbar.insert(new SeparatorToolItem(), -1);
-			toolbar.insert(increaseFontSizeButton, -1);
-			toolbar.insert(decreaseFontSizeButton, -1);
-//			toolbar.insert(this.completeButton, -1);
-//			toolbar.insert(this.deleteButton, -1);
-			//		toolbar.insert(new Gtk.SeparatorToolItem(), -1);
-			var separator = new SeparatorToolItem();
-			toolbar.add(separator);
-			toolbar.child_set_property(separator, "expand", true);
-			separator.draw = false;
-			toolbar.insert(separator, -1);
-			toolbar.insert(settingsMenuButton, -1);
-		}
+		headerBar.pack_start(openButton);
+		headerBar.pack_start(unlockButton);
+		headerBar.pack_start(addImageButton);
+		headerBar.pack_end(settingsMenuButton);
 
 		this.entryTextView.buffer.changed.connect(() => { onTextChanged(this.entryTextView.buffer); });
 		this.editor = new JournalEditor(this.entryTextView.buffer);
@@ -370,7 +347,6 @@ public class Main : Window {
 		this.calendar.expand = false;
 		this.resetCalendarFont();
 		this.calendar.day_selected.connect(() => { daySelected(); });
-		this.goToTodaysEntry();
 
 		var hbox = new Box(Orientation.HORIZONTAL, 2);
 		hbox.pack_start(entryBox, true, true, 2);
@@ -380,26 +356,93 @@ public class Main : Window {
 		hbox.pack_start(calendarBox, false, false, 2);
 
 		var vbox = new Box (Orientation.VERTICAL, 0);
-		if (elementaryHackTime) {
-			vbox.pack_start(toolbar, false, true, 0);
-		} else {
-			vbox.pack_start(menubar, false, true, 0);
-		}
+		
 		vbox.pack_start (hbox, true, true, 2);
 		add (vbox);
 
 		this.setDjDirLocationMenuLabel();
 
-		//this.startingFontSize = 10;
-		this.fontSize = UserData.fontSize;
-		this.resetFontSize();
-
-		Zystem.debug("Font size is: " + this.fontSize.to_string());
+		var font = Pango.FontDescription.from_string(UserData.fontString);
+		this.entryTextView.override_font(font);
 
 		// Connect keypress signal
 		this.key_press_event.connect((window,event) => { return this.onKeyPress(event); });
 
 		this.destroy.connect(() => { this.on_destroy(); });
+
+		this.loadBlips();
+		this.goToTodaysEntry();
+	}
+
+	private void chooseImage() {
+		var fileChooser = new FileChooserDialog("Choose Image", this,
+												FileChooserAction.OPEN,
+												Stock.CANCEL, ResponseType.CANCEL,
+												Stock.OPEN, ResponseType.ACCEPT);
+		var filter = new FileFilter();
+		filter.set_filter_name("Images");
+		filter.add_pixbuf_formats();
+		fileChooser.add_filter(filter);
+		if (fileChooser.run() == ResponseType.ACCEPT) {
+			string imgFilePath = fileChooser.get_filename();
+			this.addImageNow(imgFilePath);
+		}
+		fileChooser.destroy();
+	}
+
+	private void addImageNow(string imgFilePath) {
+		/* Images! */
+
+		// Copy image file
+		var file = File.new_for_path(imgFilePath);
+		string fileDestPath = FileUtility.pathCombine(this.entry.monthDirPath, this.entry.getDayString());
+		string relativePath = FileUtility.pathCombine(this.entry.archiveRelativeMonthPath, this.entry.getDayString());
+
+		// If file already exists, add timestamp to file name
+		fileDestPath = fileDestPath + FileUtility.getFileExtensionFromString(imgFilePath);
+		relativePath = relativePath + FileUtility.getFileExtensionFromString(imgFilePath);
+		fileDestPath = FileUtility.addTimestampToFilePath(fileDestPath);
+		relativePath = FileUtility.addTimestampToFilePath(relativePath);
+		
+		var destFile = File.new_for_path(fileDestPath);
+
+		// Only do action if destination file does not exist. We don't want to write over any files.
+		if (!destFile.query_exists()) {
+			file.copy(destFile, FileCopyFlags.NONE);
+		}
+		
+		Image img = new Image.from_file(imgFilePath);
+		var anchor = this.editor.getAnchorAtCurrent();
+
+
+		// resize image first
+		var pixbuf = img.pixbuf;
+		double w = pixbuf.width;
+		double h = pixbuf.height;
+
+		Zystem.debug("w " + w.to_string());
+		Zystem.debug("h " + h.to_string());
+		Zystem.debug("wwwwwwwwwwwwwwwwwwwww ");
+		
+		if (w > 400) {
+			double newH = (1 - ((w - 400) / w)) * h;
+			Zystem.debug("newH " + newH.to_string());
+			Zystem.debug("w " + w.to_string());
+			var newPixbuf = pixbuf.scale_simple(400, (int)newH, Gdk.InterpType.BILINEAR);
+			img.set_from_pixbuf(newPixbuf);
+		} else if (h > 400) {
+			//
+		}
+		
+		this.entryTextView.add_child_at_anchor(img, anchor);
+		img.show_now();
+
+		this.entry.addImage(relativePath, fileDestPath, img, anchor, this.editor.buffer);
+
+//		this.entry.replaceImagesWithTags(this.editor.buffer);
+
+		this.needsSave = true;
+		this.autoSave();
 	}
 
 	// Change for DayJournal
@@ -408,7 +451,8 @@ public class Main : Window {
 		
 		// Add list of user's journals to menu
 		foreach (string s in UserData.getJournalList()) {
-			var menuItem = new Gtk.MenuItem.with_label(s);
+			var menuItem = new Gtk.CheckMenuItem.with_label(s);
+			menuItem.active = s == UserData.djDirPath;
 			menuItem.activate.connect(() => {
 				this.setJournalDir(s);
 			});
@@ -417,25 +461,44 @@ public class Main : Window {
 		}
 
 		// Then, add the "Add" and "Remove" options
-		var rememberJournal = new Gtk.MenuItem.with_label("Remember current journal");
-		rememberJournal.activate.connect(() => { this.rememberCurrentJournal(); });
+		/*var rememberJournal = new Gtk.MenuItem.with_label("Remember current journal");
+		rememberJournal.activate.connect(() => { this.rememberCurrentJournal(); });*/
 		
 		var forgetJournal = new Gtk.MenuItem.with_label("Forget current journal");
 		forgetJournal.activate.connect(() => { this.forgetCurrentJournal(); });
 
 		this.openJournalsMenu.append(new Gtk.SeparatorMenuItem());
-		this.openJournalsMenu.append(rememberJournal);
 		this.openJournalsMenu.append(forgetJournal);
 
+		var setAsImport = new CheckMenuItem.with_label("Import mobile entries to this journal");
+		setAsImport.active = UserData.currentJournalIsImportJournal();
+		setAsImport.toggled.connect(() => {
+			this.setCurrentJournalAsImportJournalClicked(setAsImport.active);
+		});
+
+		this.openJournalsMenu.append(new Gtk.SeparatorMenuItem());
+		this.openJournalsMenu.append(setAsImport);
+
 		this.openButton.set_menu(openJournalsMenu);
+		this.journalsMenuItem.set_submenu(openJournalsMenu);
 		this.openJournalsMenu.show_all();
+	}
+
+	private void setCurrentJournalAsImportJournalClicked(bool importSet) {
+		Zystem.debug("Import? " + UserData.importJournalPath);
+		Zystem.debug("HELLO THERE IMPORT SET TO " + importSet.to_string());
+		if (importSet) {
+			UserData.setCurrentJournalAsImportJournal();
+		} else {
+			UserData.setNoImportJournal();
+		}
+		Zystem.debug("Import? " + UserData.importJournalPath);
 	}
 
 	private void lockEntry() {
 		this.entryLocked = true;
 		this.entryTextView.editable = false;
 		this.entryTextView.cursor_visible = false;
-		//this.changeEntryBgColor("#F2F1F0");
 		this.changeEntryBgColor(this.lockedBgColor);
 		this.scroll.shadow_type = ShadowType.NONE;
 
@@ -446,7 +509,6 @@ public class Main : Window {
 		this.entryLocked = false;
 		this.entryTextView.editable = true;
 		this.entryTextView.cursor_visible = true;
-		//this.changeEntryBgColor("#FFFFFF");
 		this.changeEntryBgColor(this.unlockedBgColor);
 		this.scroll.shadow_type = ShadowType.ETCHED_OUT;
 
@@ -467,7 +529,8 @@ public class Main : Window {
 
 	private async void callSave() {
 		try {
-			yield this.entry.saveEntryFile(this.editor.getText());
+			//yield this.entry.saveEntryFile(this.editor.getText());
+			yield this.entry.saveEntryFile(this.editor.buffer);
 			this.needsSave = false;
 		} catch (Error e) {
 			Zystem.debug("There was an error saving the file.");
@@ -475,7 +538,7 @@ public class Main : Window {
 	}
 
 	private async void seldomSave() {
-		Zystem.debug("THIS IS A SELDOM SAVE POINT AND needsSave is " + this.needsSave.to_string());
+//		Zystem.debug("THIS IS A SELDOM SAVE POINT AND needsSave is " + this.needsSave.to_string());
 		if (UserData.seldomSave && this.needsSave) {
 			this.callSave();
 		}
@@ -506,7 +569,7 @@ public class Main : Window {
 			UserData.saveWindowSize(this.width, this.height);
 
 			// Save font size
-			UserData.saveFontSize(this.fontSize);
+//			UserData.saveFontSize(this.fontSize);
 
 			// Save calendar font size
 			UserData.saveCalendarFontSize(this.getCalendarFontSize());
@@ -524,7 +587,7 @@ public class Main : Window {
 			this.needsSave = true;
 			this.autoSave();
 		} else {
-			Zystem.debug("Not saving because we're only just opening the file. Saving now is dumb.");
+//			Zystem.debug("Not saving because we're only just opening the file. Saving now is dumb.");
 		}
 	}
 
@@ -536,7 +599,7 @@ public class Main : Window {
 
 		if (this.entry != null) {
 			this.seldomSave();
-			Zystem.debug("Seldom save went swimmingly");
+//			Zystem.debug("Seldom save went swimmingly");
 		}
 
 		int year = this.calendar.year;
@@ -555,7 +618,8 @@ public class Main : Window {
 		this.isOpening = true;
 		
 		this.entry = new JournalEntry(year, month, day);
-		this.editor.startNewEntry(this.entry.getFileContents());
+		this.editor.startNewEntry(this.entry.getFileContents(), this.entryTextView, this.entry);
+		
 		this.needsSave = false;
 
 		this.isOpening = false;
@@ -583,7 +647,7 @@ public class Main : Window {
 
 		string keyName = Gdk.keyval_name(keyval);
 		
-		Zystem.debug("Key:\t" + keyName);
+//		Zystem.debug("Key:\t" + keyName);
 
 		if (ctrl && shift) { // Ctrl+Shift+?
 			Zystem.debug("Ctrl+Shift+" + keyName);
@@ -601,7 +665,7 @@ public class Main : Window {
 					this.askResetSomeSettings();
 					break;
 				default:
-					Zystem.debug("What should Ctrl+Shift+" + keyName + " do?");
+//					Zystem.debug("What should Ctrl+Shift+" + keyName + " do?");
 					break;
 			}
 		}
@@ -646,10 +710,14 @@ public class Main : Window {
 					this.decreaseFontSize();
 					break;
 				case "0":
-					this.resetFontSize();
+//					this.resetFontSize();
+					this.clearFontPrefs();
+					break;
+				case "p":
+					this.chooseImage();
 					break;
 				default:
-					Zystem.debug("What should Ctrl+" + keyName + " do?");
+//					Zystem.debug("What should Ctrl+" + keyName + " do?");
 					break;
 			}
 		}
@@ -679,7 +747,7 @@ public class Main : Window {
 	 */
 	private void tryInsertEntrySection() {
 		if (this.entryLocked) {
-			Zystem.debug("Entry is locked, cannot do that");
+//			Zystem.debug("Entry is locked, cannot do that");
 			return;
 		}
 		
@@ -699,14 +767,12 @@ public class Main : Window {
 	/**
 	 * Font size methods
 	 */
-	private void resetFontSize() {
-		/* Pango.FontDescription font = this.entryTextView.style.context.get_font(StateFlags.NORMAL);
-		// font.set_size(this.startingFontSize);
-		font.set_size((int)(this.startingFontSize * Pango.SCALE));
-		this.entryTextView.modify_font(font);
-		// Zystem.debug("The font size is: " + font.get_size().to_string()); */
-		//this.changeFontSize(this.startingFontSize - this.fontSize);
+	/*private void resetFontSize() {
 		this.changeFontSize(UserData.fontSize - this.fontSize);
+	}*/
+
+	private int getFontSize() {
+		return this.entryTextView.get_style_context().get_font(StateFlags.NORMAL).get_size() / Pango.SCALE;
 	}
 
 	private void increaseFontSize() {
@@ -717,24 +783,39 @@ public class Main : Window {
 	}
 
 	private void changeFontSize(int byThisMuch) {
+		int fontSize = this.getFontSize();
+		
 		// If font would be too small or too big, no way man
-		if (this.fontSize + byThisMuch < 6 || this.fontSize + byThisMuch > 50) {
-			Zystem.debug("Not changing font size, because it would be: " + this.fontSize.to_string());
+		if (fontSize + byThisMuch < 6 || fontSize + byThisMuch > 50) {
+//			Zystem.debug("Not changing font size, because it would be: " + fontSize.to_string());
 			return;
 		}
 
-		this.fontSize += byThisMuch;
-		Zystem.debug("Changing font size to: " + this.fontSize.to_string());
+		fontSize += byThisMuch;
+//		Zystem.debug("Changing font size to: " + fontSize.to_string());
 
 		Pango.FontDescription font = this.entryTextView.style.context.get_font(StateFlags.NORMAL);
-		double newFontSize = (this.fontSize) * Pango.SCALE;
+		double newFontSize = (fontSize) * Pango.SCALE;
 		font.set_size((int)newFontSize);
-		this.entryTextView.modify_font(font);
+		this.entryTextView.override_font(font);
+		UserData.setFont(font.to_string());
+	}
 
-		/*var docfont=new Pango.FontDescription();
-		docfont.set_family("Ubuntu");
-		docfont.set_size(14000);
-		this.entryTextView.modify_font(docfont);*/
+	private void clearFontPrefs() {
+		UserData.setFont("");
+		this.entryTextView.override_font(null);
+		this.changeFontSize(10 - this.getFontSize());
+	}
+
+	private void chooseFont() {
+		Gtk.FontChooserDialog dialog = new Gtk.FontChooserDialog ("Choose Entry Font", this);
+		if (dialog.run () == Gtk.ResponseType.OK) {
+			UserData.setFont(dialog.font);
+			this.entryTextView.override_font(dialog.font_desc);
+		}
+
+		// Close the FontChooserDialog
+		dialog.close ();
 	}
 
 	/*
@@ -758,7 +839,7 @@ public class Main : Window {
 	}
 
 	private async ArrayList<int> getDaysToMark(int year, int month) {
-		ArrayList<int> days = new ArrayList<int>();
+		ArrayList<int> days = new ArrayList<int>(null);
 
 		// See if month directory exists
 		var monthDir = File.new_for_path(this.entry.monthDirPath);
@@ -779,8 +860,6 @@ public class Main : Window {
 	}
 
 	public void menuChangeDjDirClicked() {
-		Zystem.debug("Changing DayJournal dir eh?");
-
 		var fileChooser = new FileChooserDialog("Open File", this,
 												FileChooserAction.SELECT_FOLDER,
 												Stock.CANCEL, ResponseType.CANCEL,
@@ -788,6 +867,7 @@ public class Main : Window {
 		if (fileChooser.run() == ResponseType.ACCEPT) {
 			string dirPath = fileChooser.get_filename();
 			this.setJournalDir(dirPath);
+			this.rememberCurrentJournal();
 		}
 		fileChooser.destroy();
 	}
@@ -795,13 +875,16 @@ public class Main : Window {
 	private void setJournalDir(string dirPath) {
 		UserData.setDjDir(dirPath);
 		this.setDjDirLocationMenuLabel();
+		this.setOpenJournalsMenuItems();
+
+		this.loadBlips();
+		
 		// Open new entry for the selected date from the new location
 		this.daySelected();
 	}
 
 	private void setDjDirLocationMenuLabel() {
 		this.menuOpenDjLocation.label = "View Journal Files (" + UserData.djDirPath + ")";
-		Zystem.debug("HEEYYYYYYY DJDIRPATH IS " + UserData.djDirPath);
 	}
 
 	public void menuOpenDjLocationClicked() {
@@ -809,22 +892,22 @@ public class Main : Window {
 			Gtk.show_uri(null, "file://" + UserData.djDirPath, Gdk.CURRENT_TIME);
 		} catch (IOError e) {
 			var dialog = new Gtk.MessageDialog(null,Gtk.DialogFlags.MODAL,Gtk.MessageType.INFO, 
-					Gtk.ButtonsType.OK, this.getNoEntriesText());
+					Gtk.ButtonsType.OK, "%s", this.getNoEntriesText());
 			dialog.set_title("Message Dialog");
 			dialog.run();
 			dialog.destroy();
 		}
 	}
 
-	private void createCompleteJournalArchive() {
-		var archiver = new JournalArchiver();
+	private void createCompleteJournalArchive(string archiveType) {
+		var archiver = new JournalArchiver(archiveType);
 
 		archiver.createCompleteArchiveFile();
 
 		string message = archiver.archiveFilePath + " created in your DayJournal folder.";
 
 		Notify.init("DayJournal");
-		var notification = new Notification("Journal Archive File", message, "dayjournal");
+		var notification = new Notify.Notification("Journal Archive File", message, "dayjournal");
 //		notification.set_timeout(5000);
 		notification.show();
 	}
@@ -832,6 +915,13 @@ public class Main : Window {
 	private void createJournalArchive() {
 		// TODO!
 		
+	}
+
+	private void loadBlips() {
+		if (UserData.currentJournalIsImportJournal()) {
+			BlipLoader blipLoader = new BlipLoader();
+			blipLoader.loadBlips();
+		}
 	}
 
 	private string getNoEntriesText() {
@@ -869,7 +959,15 @@ public class Main : Window {
 
 	private void forgetCurrentJournal() {
 		UserData.forgetCurrentJournal();
-		this.setOpenJournalsMenuItems();
+
+		ArrayList<string> journalList = UserData.getJournalList();
+		if (journalList.size > 0) {
+			this.setJournalDir(journalList.get(0));
+			this.setOpenJournalsMenuItems();
+		} else {
+			this.setJournalDir(UserData.getDefaultDjDir());
+			this.rememberCurrentJournal();
+		}
 	}
 
 	/*

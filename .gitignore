@@ -15,3 +15,17 @@
 /src/JournalEntry.c
 /src/JournalEntry.o
 /src/JournalEntry.vala~
+/src/.deps/Blip.Po
+/src/.deps/BlipLoader.Po
+/src/.deps/DateUtility.Po
+/src/.deps/DayOneToBlipConverter.Po
+/src/.deps/EntryImageAnchors.Po
+/src/.deps/FileUtility.Po
+/src/.deps/Journal.Po
+/src/.deps/JournalArchiver.Po
+/src/.deps/JournalEditor.Po
+/src/.deps/JournalEntry.Po
+/src/.deps/UserData.Po
+/src/.deps/UserSettingsManager.Po
+/src/.deps/Zystem.Po
+/src/.deps/dayjournal.Po

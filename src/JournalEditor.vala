@@ -24,7 +24,7 @@ using GLib;
 public class JournalEditor : Object {
 
 	// Variables
-	private TextBuffer buffer;
+	public TextBuffer buffer { get; private set; }
 
 	private int undoMax;
 
@@ -77,16 +77,72 @@ public class JournalEditor : Object {
 	/*
 	 * Start working on a new entry. Sets the passed in text as the buffer text.
 	 */
-	public void startNewEntry(string text) {
+	public void startNewEntry(string origText, TextView textView, JournalEntry entry) {
+		string text = origText;
+		/*ImageSaveChecker.beforeText = origText;*/
 		this.undos.clear();
 		this.redos.clear();
 
 		this.disconnectSignals();
 		
 		this.buffer.set_text(text);
-		Zystem.debug("Entry text is: " + text);
+
+		int i = text.index_of(EntryImageAnchors.IMG_TAG_START, 0);
+		int iEnd = 0;
+		while (i >= 0) {
+			iEnd = text.index_of(EntryImageAnchors.IMG_TAG_END, i);
+			// if iEnd < 0 that's bad
+			iEnd += EntryImageAnchors.IMG_TAG_END.length;
+			Zystem.debug("IMAGE FOUND AT " + i.to_string() + " to " + iEnd.to_string());
+//			var relativePath = FileUtility.getPathFromImgTag(text.substring(i, iEnd - i));
+			var relativePath = FileUtility.getPathFromImgTag(text.slice(i, iEnd));
+			var fullPath = relativePath.replace("..", UserData.djDirPath); 
+//			text = text.slice(i, iEnd);
+			text = text.substring(0, i) + " " + text.substring(iEnd);
+			var iIter = this.getIterAtOffset(i);
+			var iEndIter = this.getIterAtOffset(iEnd);
+			this.buffer.delete(ref iIter, ref iEndIter);
+			this.addImageAtIterForEntry(entry, textView, relativePath, fullPath, this.getIterAtOffset(i));
+			i++;
+			i = text.index_of(EntryImageAnchors.IMG_TAG_START, i);
+		}
+		Zystem.debug("IMAGE FINDING TOTALLY COMPLETE");
 
 		this.connectSignals();
+	}
+
+	public void addImageAtIterForEntry(JournalEntry entry, TextView textView, string relativePath, string imgFilePath, TextIter imgIter) {
+		Zystem.debug("GOING TO addImageAtIter " + imgIter.get_offset().to_string());
+
+		Zystem.debug(relativePath);
+		Zystem.debug(imgFilePath);
+
+		Image img = new Image.from_file(imgFilePath);
+		var anchor = this.buffer.create_child_anchor(imgIter);
+
+		// resize image first
+		var pixbuf = img.pixbuf;
+		double w = pixbuf.width;
+		double h = pixbuf.height;
+
+		/*Zystem.debug("w " + w.to_string());
+		Zystem.debug("h " + h.to_string());
+		Zystem.debug("wwwwwwwwwwwwwwwwwwwww ");*/
+		
+		if (w > 400) {
+			double newH = (1 - ((w - 400) / w)) * h;
+			/*Zystem.debug("newH " + newH.to_string());
+			Zystem.debug("w " + w.to_string());*/
+			var newPixbuf = pixbuf.scale_simple(400, (int)newH, Gdk.InterpType.BILINEAR);
+			img.set_from_pixbuf(newPixbuf);
+		} else if (h > 400) {
+			//
+		}
+		
+		textView.add_child_at_anchor(img, anchor);
+		img.show_now();
+
+		entry.addImage(relativePath, imgFilePath, img, anchor, this.buffer);
 	}
 
 	/*
@@ -140,6 +196,10 @@ public class JournalEditor : Object {
 	 */
 	public void cursorToStart() {
 		this.buffer.place_cursor(this.getStartIter());
+	}
+
+	public TextChildAnchor getAnchorAtCurrent() {
+		return this.buffer.create_child_anchor(this.getCurrentIter());
 	}
 
 	private TextIter getCurrentIter() {
@@ -238,7 +298,7 @@ public class JournalEditor : Object {
 
 	private void onInsertText(TextIter iter, string text, int length) {
 		//
-		Zystem.debug("HEY THERE IT'S THE ONINSERTTEXT SPEAKING HERE: " + text);
+//		Zystem.debug("HEY THERE IT'S THE ONINSERTTEXT SPEAKING HERE: " + text);
 
 		this.highlight();
 
@@ -270,7 +330,7 @@ public class JournalEditor : Object {
 	private void connectSignals() {
 		//
 		this.onInsertConnection = 
-			this.buffer.insert_text.connect((iter,text,length) => { this.onInsertText(iter, text, length); });
+			this.buffer.insert_text.connect((ref iter,text,length) => { this.onInsertText(iter, text, length); });
 		this.onDeleteConnection =
 			this.buffer.delete_range.connect((startIter,endIter) => { this.onDeleteRange(startIter, endIter); });
 	}

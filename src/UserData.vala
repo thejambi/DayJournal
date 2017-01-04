@@ -18,12 +18,16 @@
  */
 
 using Gee;
+using Notify;
 
 class UserData : Object {
 	//
 	public static string homeDirPath { get; private set; }
 	public static string defaultDjDirName { get; private set; }
 	public static string djDirPath { get; set; }
+	public static string importJournalPath { get; set; }
+	public static string blipDirPath { get; set; }
+	public static int64 lastBlipLoadDate { get; set; }
 	public static bool lockPastEntries { get; set; }
 	public static bool seldomSave { get; set; }
 	public static string newEntrySectionText { get; set; }
@@ -32,6 +36,8 @@ class UserData : Object {
 	public static int fontSize { get; set; default = 10; }
 	public  static const int defaultFontSize = 10;
 	public static int calendarFontSize { get; set; }
+	public static bool rememberCurrentJournalAfterInit { get; set; default = false; }
+	public static string fontString { get; set; default = ""; }
 	
 	private static UserSettingsManager settings;
 
@@ -46,14 +52,61 @@ class UserData : Object {
 		Zystem.debug("Loading settings...");
 		// Fire up the settings
 		settings = new UserSettingsManager();
+		if (importJournalPath == null || importJournalPath == "") {
+			setCurrentJournalAsImportJournal();
+		}
 		Zystem.debug("Done Loading settings...");
 
 		if (calendarFontSize < 4) {
 			calendarFontSize = new Gtk.Calendar().get_pango_context().get_font_description().get_size() / Pango.SCALE;
 		}
 
-		Zystem.debug("Done Loading UserData...");
-		Zystem.debug("Lock past entries is: " + lockPastEntries.to_string());
+		if (blipDirPath == "") {
+			loadBlipDir();
+		}
+
+		Zystem.debug("Import? " + UserData.importJournalPath);
+
+		if (rememberCurrentJournalAfterInit) {
+			UserData.rememberCurrentJournal();
+		}
+	}
+
+	private static void loadBlipDir() {
+		bool hasDbxBlipJournal = false;
+		bool hasU1BlipJournal = false;
+		string blipPathDbx = FileUtility.pathCombine(homeDirPath, "Dropbox");
+		blipPathDbx = FileUtility.pathCombine(FileUtility.pathCombine(blipPathDbx, "Apps"), "Blip Journal");
+		
+		if (FileUtility.isDirectory(blipPathDbx)) {
+			hasDbxBlipJournal = true;
+			Zystem.debug("YAYYYYYYYYYYYYYY Dropbox Blip dir path found: " + blipPathDbx);
+		}
+
+		string blipPathU1 = FileUtility.pathCombine(homeDirPath, "Ubuntu One");
+		blipPathU1 = FileUtility.pathCombine(blipPathU1, ".Blip Journal");
+
+		if (FileUtility.isDirectory(blipPathU1)) {
+			hasU1BlipJournal = true;
+			Zystem.debug("U1 Blip Journal path: " + blipPathU1);
+		}
+
+		if (hasDbxBlipJournal && hasU1BlipJournal) {
+			// Need to ask
+			// How about we just find out ourselves before asking?
+			blipDirPath = BlipLoader.decideWhichBlipDirToUse(blipPathDbx, blipPathU1);
+		} else if (hasDbxBlipJournal) {
+			// use dropbox
+			blipDirPath = blipPathDbx;
+		} else if (hasU1BlipJournal) {
+			// use u1
+			blipDirPath = blipPathU1;
+		} else {
+			// No blip dir :(
+			blipDirPath = "";
+		}
+
+		settings.setString(UserSettingsManager.blipDirKey, blipDirPath);
 	}
 
 	public static void setDjDir(string path) {
@@ -62,7 +115,8 @@ class UserData : Object {
 		djDirPath = path;
 		settings.setDjDir(path);
 
-		FileUtility.convertToNewJournalStructure();
+		// NOTE: We are no longer attempting to convert the old journal! Remember that please.
+		/* FileUtility.convertToNewJournalStructure(); */
 	}
 
 	public static string getDefaultDjDir() {
@@ -70,9 +124,9 @@ class UserData : Object {
 	}
 
 	public static string getNewEntrySectionText() {
-		//
-
-		string newSectionText = "\n\n-----\n\n";
+		var dateTime = new DateTime.now_local();
+		string newSectionText = "\n\n" + dateTime.format("%l:%M").strip() + BlipData.amOrPm(dateTime) + " |  ";
+//		string newSectionText = "\n\n-----\n\n";
 
 		return newSectionText;
 	}
@@ -92,11 +146,11 @@ class UserData : Object {
 		}
 	}
 
-	public static void saveFontSize(int size) {
+	/*public static void saveFontSize(int size) {
 		if (fontSize != size) {
 			settings.setInt(UserSettingsManager.fontSizeKey, size);
 		}
-	}
+	}*/
 
 	public static void saveCalendarFontSize(int size) {
 		if (calendarFontSize != size) {
@@ -120,9 +174,53 @@ class UserData : Object {
 		settings.removeJournal(djDirPath);
 	}
 
+	public static void setCurrentJournalAsImportJournal() {
+		importJournalPath = djDirPath;
+		settings.setString(UserSettingsManager.importJournalDirKey, djDirPath);
+	}
+
+	public static void setNoImportJournal() {
+		importJournalPath = UserSettingsManager.NONE;
+		settings.setString(UserSettingsManager.importJournalDirKey, UserSettingsManager.NONE);
+	}
+
+	public static bool currentJournalIsImportJournal() {
+		return djDirPath == importJournalPath;
+	}
+
 	public static ArrayList<string> getJournalList() {
 		return settings.getJournalList();
 	}
 
+	public static void setLastBlipLoadDateToYesterday() {
+		var today = new DateTime.now_local();
+		var time = new DateTime.local(today.get_year(), today.get_month(), today.get_day_of_month(), 0,0,0);
+		string timeStr = time.to_unix().to_string();
+		settings.setString(UserSettingsManager.lastBlipLoadDateKey, timeStr);
+	}
+
+	public static void setLastBlipLoadDate(DateTime time) {
+		string timeStr = time.to_unix().to_string();
+		settings.setString(UserSettingsManager.lastBlipLoadDateKey, timeStr);
+	}
+
+	public static void showNotification(string title, string message) {
+		Notify.init("DayJournal");
+		var notification = new Notify.Notification(title, message, "dayjournal");
+		notification.show();
+	}
+
+	public static string getDayOneEntriesDir() {
+		return FileUtility.pathCombine(homeDirPath, "Dropbox/Apps/Day One/Journal.dayone/entries");
+	}
+
+	public static string getDayOnePhotosDir() {
+		return FileUtility.pathCombine(homeDirPath, "Dropbox/Apps/Day One/Journal.dayone/photos");
+	}
+
+	public static void setFont(string fontStr) {
+		settings.setString(UserSettingsManager.fontKey, fontStr);
+		fontString = fontStr;
+	}
 	
 }

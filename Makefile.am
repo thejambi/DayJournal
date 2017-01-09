@@ -5,12 +5,7 @@ SUBDIRS = src
 
 dayjournaldocdir = ${prefix}/doc/dayjournal
 dayjournaldoc_DATA = \
-	README\
-	COPYING\
-	AUTHORS\
-	ChangeLog\
-	INSTALL\
-	NEWS
+	COPYING
 
 
 EXTRA_DIST = $(dayjournaldoc_DATA)

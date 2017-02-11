@@ -1,0 +1,11 @@
+--- Makefile.in.bex	2016-12-30 12:36:10.970633912 +0100
++++ Makefile.in	2016-12-30 12:36:13.819626019 +0100
+@@ -692,7 +692,7 @@
+ uninstall: uninstall-recursive
+ 
+ install-am: all-am
+-	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
++	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am
+ 
+ installcheck: installcheck-recursive
+ install-strip:

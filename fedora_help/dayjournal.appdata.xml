@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+  <id>dayjouranl.desktop</id>
+  <name>DayJournal</name>
+  <summary>Digital journal that uses plain text files</summary>
+  <developer_name>Zach Burnham</developer_name>
+  <description>
+      <p>DayJournal is a minimalist digital journal that lets the content you create outlast DayJournal itself.</p>
+      <ul>
+          <li>Future proofs your journal entries by saving them as plain text and organizing them as you go. This means you can read or create entries when you don’t have DayJournal.</li>
+          <li>Automatically saves as you write.</li>
+          <li>Easily sync journals with cloud storage services because you choose where your journal folder is.</li>
+          <li>Add pictures to your journal entries.</li>
+          <li>Manage multiple journals.</li>
+          <li>Keyboard shortcuts make it easy to navigate through entries.</li>
+          <li>Create a journal archive file, an HTML page that looks great when printed so you can keep a physical journal too.</li>
+          <li>Add to your journal from anywhere with Blip Journal for Android. DayJournal can automatically import entries synced to Dropbox from Blip Journal. On iOS? Now DayJournal can automatically import entries synced to Dropbox from the Day One app as well.</li>
+      </ul>
+      <p>Simply put, DayJournal is the simple digital journal that finally does it right.</p>
+  </description>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPLv3+</project_license>
+  <url type="bugtracker">https://github.com/thejambi/DayJournal/issues</url>
+  <url type="donation">https://gumroad.com/l/dayfolder#</url>
+  <url type="homepage">https://burnsoftware.wordpress.com/dayjournal/</url>
+  <screenshots>
+    <screenshot type="default">
+        <image type="source">https://burnsoftware.files.wordpress.com/2012/06/dayjournal_screenshot.png</image>
+    </screenshot>
+  </screenshots>
+  <update_contact>thejambi@gmail.com</update_contact>
+</component>

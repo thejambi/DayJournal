@@ -197,3 +197,5 @@
 /libtool
 /ltmain.sh
 /missing
+/src/Makefile
+/src/Makefile.in

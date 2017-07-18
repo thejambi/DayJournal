@@ -199,3 +199,9 @@
 /missing
 /src/Makefile
 /src/Makefile.in
+/fedora_help/dayjournal.appdata.xml
+/fedora_help/dayjournal.desktop
+/fedora_help/dayjournal.png
+/fedora_help/dayjournal.spec
+/fedora_help/dayjournal_screenshot.png
+/fedora_help/makefile.patch

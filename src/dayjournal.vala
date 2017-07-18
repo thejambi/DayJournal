@@ -523,8 +523,10 @@ public class Main : Window {
 	}*/
 
 	private void changeEntryBgColor(Gdk.RGBA color) {
+		/* //Disabling 
 		this.entryTextView.override_background_color(Gtk.StateFlags.NORMAL, color);
 		this.entryTextView.override_background_color(Gtk.StateFlags.SELECTED, this.selectionColor);
+		 */
 	}
 
 	private async void callSave() {

@@ -81,7 +81,7 @@ public class DayOneToBlipConverter : GLib.Object {
 
 		// Load pic blip data
 		string blipContents = "\n" + EntryImageAnchors.IMG_TAG_START + relativePath + EntryImageAnchors.IMG_TAG_END;
-		this.picBlipData = new BlipData(this.blipData.dateTime, blipContents, picDateEntry);
+		this.picBlipData = new BlipData(file, this.blipData.dateTime, blipContents, picDateEntry);
 		this.blipData.incrementTimeEverSoSlightly();
 		
 		this.photoLoaded = true;
@@ -122,7 +122,7 @@ public class DayOneToBlipConverter : GLib.Object {
 		// get JournalEntry
 		var entry = new JournalEntry(dateTime.get_year(), dateTime.get_month(), dateTime.get_day_of_month());
 
-		return new BlipData(dateTime, blipContents, entry);
+		return new BlipData(entryFile, dateTime, blipContents, entry);
 	}
 
 	private string getContentText() {

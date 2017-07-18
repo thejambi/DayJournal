@@ -137,6 +137,9 @@ public class BlipLoader : GLib.Object {
 	}
 
 	private void processBlipDir() throws GLib.Error {
+		if (!FileUtility.isDirectory(this.blipDirPath)) {
+			return; // No Blip dir to process.
+		}
 		// Loop through directory. 4 digit folders are are years.
 
 		File blipDir = File.new_for_path(this.blipDirPath);
@@ -189,6 +192,8 @@ public class BlipLoader : GLib.Object {
 
 		// Go through files
 		while((file = enumerator.next_file()) != null) {
+			Zystem.debug("Looking for files in Month Dir");
+			Zystem.debug(file.get_name());
 			// Check for Day dirs
 			if (file.get_file_type() == FileType.DIRECTORY && file.get_name().length == 2) {
 				Zystem.debug("Day dir found: " + file.get_name());
@@ -210,6 +215,7 @@ public class BlipLoader : GLib.Object {
 		var pathTime = new DateTime.local(int.parse(year),int.parse(month),int.parse(day),24,0,0);
 		//Zystem.debug(pathTime.format("%Y/%m/%d %H:%M:%S"));
 		//Zystem.debug(this.dateBegin.format("%Y/%m/%d %H:%M:%S"));
+		Zystem.debug("-----PROCESSING DAY DIR----------");
 		if (this.dateBegin.compare(pathTime) > 0) {
 			return;
 		}
@@ -267,6 +273,9 @@ public class BlipLoader : GLib.Object {
 
 				// keep most recent blip date
 				this.lastLoadedBlipDate = blip.dateTime.add_seconds(1);
+
+				// Archive blip entry file
+				//blip.archiveEntryFile();  // Doesn't work well with Blip Journal app
 			}
 		}
 	}
@@ -275,6 +284,9 @@ public class BlipLoader : GLib.Object {
 	 * This needs to process Day One dir and convert entries into Blips and add them.
 	 */
 	private void processDayOneDir() {
+		if (!FileUtility.isDirectory(UserData.getDayOneEntriesDir()) || !FileUtility.isDirectory(UserData.getDayOnePhotosDir())) {
+			return; // No Day One dir to process.
+		}
 		// Loop through directory to find day dirs
 		File entriesDir = File.new_for_path(UserData.getDayOneEntriesDir());
 		File photosDir = File.new_for_path(UserData.getDayOnePhotosDir());

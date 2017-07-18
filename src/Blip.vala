@@ -40,13 +40,19 @@ public interface Blip : GLib.Object {
 		// Create dateTime
 		string[] chunks = filename.split("_");
 
+		Zystem.debug("CHUNKS " + chunks.length.to_string());
+
 		var i = 0;
-		if (chunks.length > 2) {
+		if (chunks.length > 4) {	// Changing to a 4.
 			i++;
 		}
 		var chunk1 = int.parse(chunks[i++]);
 		var chunk2 = int.parse(chunks[i++]);
 		var chunk3 = int.parse(chunks[i++]);
+
+		Zystem.debug(chunk1.to_string());
+		Zystem.debug(chunk2.to_string());
+		Zystem.debug(chunk3.to_string());
 		
 		this.dateTime = new DateTime.local(int.parse(year), int.parse(month), int.parse(day), 
 		                                   chunk1, chunk2, chunk3);
@@ -106,7 +112,7 @@ public class TextBlip : GLib.Object, Blip {
 	}
 
 	public BlipData getBlipData() {
-		return new BlipData(this.dateTime, this.getFileContents(), this.entry);
+		return new BlipData(this.blipFile, this.dateTime, this.getFileContents(), this.entry);
 	}
 }
 
@@ -161,7 +167,7 @@ public class PicBlip : GLib.Object, Blip {
 
 	public BlipData getBlipData() {
 		string txt = EntryImageAnchors.IMG_TAG_START + this.relativePath + EntryImageAnchors.IMG_TAG_END;
-		return new BlipData(this.dateTime, txt, this.entry);
+		return new BlipData(this.blipFile, this.dateTime, txt, this.entry);
 	}
 }
 
@@ -170,9 +176,11 @@ public class BlipData : GLib.Object {
 	public DateTime dateTime { get; private set; }
 	private string blipContents;
 	public JournalEntry entry { get; private set; }
+	private File file;
 	/*private string amOrPm;*/
 	
-	public BlipData(DateTime dateTime, string blipContents, JournalEntry entry) {
+	public BlipData(File file, DateTime dateTime, string blipContents, JournalEntry entry) {
+		this.file = file;
 		this.dateTime = dateTime;
 		this.blipContents = blipContents;
 		this.entry = entry;
@@ -191,7 +199,7 @@ public class BlipData : GLib.Object {
 	}
 
 	public bool addToCorrespondingEntryIfBetweenDates(DateTime start, DateTime end) {
-		Zystem.debug("Entry contents: " + this.blipContents);
+		//Zystem.debug("Entry contents: " + this.blipContents);
 		// If the blip is empty, then don't add it.
 		if (this.blipContents.strip() == "") {
 			Zystem.debug("EMPTY BLIIIIP I skip: " + this.dateTime.format("%Y/%m/%d %H:%M:%S"));
@@ -201,7 +209,7 @@ public class BlipData : GLib.Object {
 		if (this.dateTime.compare(start) >= 0) {
 			Zystem.debug("After start");
 		} else if (this.dateTime.compare(end) < 0) {
-			Zystem.debug("Before end");
+			//Zystem.debug("Before end");
 		}
 		
 		// Check dates
@@ -228,6 +236,19 @@ public class BlipData : GLib.Object {
 		return false;
 	}
 
+	public void archiveEntryFile() {
+		// Move to Archive folder
+		Zystem.debug("****************** Archive Blip Entry File Notes ***************");
+		Zystem.debug(this.file.get_path());
+		if ("Blip Journal" in this.file.get_path()) {
+			Zystem.debug("We're talking about Blip Journal!");
+			//var newFilePath = FileUtility.addStringToFilePath(this.file.get_path(), "__" + this.dateTime.format("%Y%m%d_%H%M%S"));
+			var newFilePath = FileUtility.pathCombine(this.file.get_parent().get_path(), "Archived");
+			Zystem.debug(newFilePath);
+			FileUtility.moveFile(this.file, this.file.get_parent().get_path(), newFilePath);
+		}
+	}
+
 	private string blipString(int numNewlines) {
 		string blipString = "";
 		for (int i = 0; i < numNewlines; i++) {
@@ -241,3 +262,4 @@ public class BlipData : GLib.Object {
 		return this.dateTime.compare(otherBlip.dateTime);
 	}
 }
+

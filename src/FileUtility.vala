@@ -115,6 +115,13 @@ class FileUtility : GLib.Object {
 		return pathPrefix + timestamp + fileExt;
 	}
 
+	public static string addStringToFilePath(string filePath, string textToAdd) {
+		string pathPrefix = filePath.substring(0, filePath.last_index_of("."));
+		string fileExt = filePath.substring(filePath.last_index_of("."));
+
+		return pathPrefix + textToAdd + fileExt;
+	}
+
 	public static string getPathFromImgTag(string imgTag) {
 		var textICareAbout = imgTag.substring(imgTag.index_of("src='"));
 		string[] chunks = textICareAbout.split("'");
@@ -176,6 +183,43 @@ class FileUtility : GLib.Object {
 				Zystem.debug("::::       to : " + pathCombine(path, "0" + file.get_name().substring(0, file.get_name().last_index_of("."))) + ".txt");
 				GLib.FileUtils.rename(filePath, pathCombine(path, "0" + file.get_name().substring(0, file.get_name().last_index_of("."))) + ".txt");
 			}
+		}
+	}
+
+	/**
+	 * Move the given file somewhere else.
+	 */
+	public static void moveFile(File file, string fromThisDir, string toThisPath) {
+		FileInfo fileInfo = file.query_info("*", 0);
+		Zystem.debug("Moving file " + fileInfo.get_name());
+
+		createFolder(toThisPath);
+
+		string fileDestPath = pathCombine(toThisPath, fileInfo.get_name());
+		
+		var destFile = File.new_for_path(fileDestPath);
+		
+		Zystem.debug(fileDestPath);
+
+		// If file already exists, add timestamp to file name
+		if (destFile.query_exists()) {
+			fileDestPath = addTimestampToFilePath(fileDestPath);
+			destFile = File.new_for_path(fileDestPath);
+		}
+
+		// Only move the file if destination file does not exist. We don't want to write over any files.
+		if (!destFile.query_exists()) {
+			//GLib.FileUtils.rename(pathCombine(fromThisDir, file.get_name()), fileDestPath);
+			try {
+				file.move (destFile, FileCopyFlags.NONE, null, (current_num_bytes, total_num_bytes) => {
+					stdout.printf ("%" + int64.FORMAT + " %" + int64.FORMAT + "\n", current_num_bytes, total_num_bytes);
+				});
+				Zystem.debug("File renamed");
+			} catch (Error e) {
+				Zystem.debug("Could not move file: " + e.message);
+			}
+		} else {
+			Zystem.debug("destFile exists");
 		}
 	}
 	

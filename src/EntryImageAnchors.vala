@@ -39,6 +39,10 @@ public class EntryImageAnchors : GLib.Object {
 		this.imgList.append(new ImageAnchorAndFile(relativePath, fullPath, img, anchor));
 	}
 
+	private string scrubText(string text) {
+		return text.replace("’", "'");
+	}
+
 	public string replaceImagesWithTags(TextBuffer buffer) {
 		EntryImageAnchors.buffer = buffer;
 		
@@ -69,7 +73,7 @@ public class EntryImageAnchors : GLib.Object {
 			}
 		}
 		
-		string newText = buffer.text;
+		string newText = this.scrubText(buffer.text);
 		uint offsetLength = this.imgList.length() - 1;
 		// for each image in map, add text tag for image
 		foreach (ImageAnchorAndFile imgAnchorFile in this.imgList) {
@@ -79,6 +83,8 @@ public class EntryImageAnchors : GLib.Object {
 				TextIter iter;
 				buffer.get_iter_at_child_anchor(out iter, anchor);
 				string txt = IMG_TAG_START + relativePath + IMG_TAG_END;
+				Zystem.debug("OffsetLength: " + offsetLength.to_string());
+				Zystem.debug(txt);
 				uint offsetPos = iter.get_offset() - offsetLength;
 				var tmp = newText.substring(0, offsetPos) + txt + newText.substring(offsetPos);
 				newText = tmp;

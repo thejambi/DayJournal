@@ -74,6 +74,24 @@ public class JournalEditor : Object {
 		return buffer.text;
 	}
 
+	private string scrubText(string text) {
+		return text.replace("’", "'");
+	}
+
+	private int getOffsetForText(string target, int startingAt) {
+		for (int offset = startingAt; offset < this.buffer.text.length - target.length; offset++) {
+			var iter1 = this.getIterAtOffset(offset);
+			var iter2 = this.getIterAtOffset(offset + target.length);
+			var text1 = this.buffer.get_text(iter1, iter2, false);
+
+			if (target == text1) {
+				Zystem.debug("target found! " + offset.to_string());
+				return offset;
+			}
+		}
+		return -1;
+	}
+
 	/*
 	 * Start working on a new entry. Sets the passed in text as the buffer text.
 	 */
@@ -85,33 +103,56 @@ public class JournalEditor : Object {
 
 		this.disconnectSignals();
 		
-		this.buffer.set_text(text);
+		this.buffer.set_text(this.scrubText(text));
 
-		int i = text.index_of(EntryImageAnchors.IMG_TAG_START, 0);
+		text = this.buffer.text;
+
+		int i = this.getOffsetForText(EntryImageAnchors.IMG_TAG_START, 0);//text.index_of(EntryImageAnchors.IMG_TAG_START, 0);
 		int iEnd = 0;
 		while (i >= 0) {
-			iEnd = text.index_of(EntryImageAnchors.IMG_TAG_END, i);
+			//iEnd = text.index_of(EntryImageAnchors.IMG_TAG_END, i);
+			iEnd = this.getOffsetForText(EntryImageAnchors.IMG_TAG_END, i);
+
+			//var errorNess = iEnd - text.index_of(EntryImageAnchors.IMG_TAG_END, i);
 			// if iEnd < 0 that's bad
 			iEnd += EntryImageAnchors.IMG_TAG_END.length;
 			Zystem.debug("IMAGE FOUND AT " + i.to_string() + " to " + iEnd.to_string());
+			
 //			var relativePath = FileUtility.getPathFromImgTag(text.substring(i, iEnd - i));
-			var relativePath = FileUtility.getPathFromImgTag(text.slice(i, iEnd));
-			var fullPath = relativePath.replace("..", UserData.djDirPath); 
+			//var relativePath = FileUtility.getPathFromImgTag(text.slice(i, iEnd));
+			//var fullPath = relativePath.replace("..", UserData.djDirPath);
 //			text = text.slice(i, iEnd);
-			text = text.substring(0, i) + " " + text.substring(iEnd);
+			//text = text.substring(0, i) + " " + text.substring(iEnd);
+			
 			var iIter = this.getIterAtOffset(i);
 			var iEndIter = this.getIterAtOffset(iEnd);
-			this.buffer.delete(ref iIter, ref iEndIter);
-			this.addImageAtIterForEntry(entry, textView, relativePath, fullPath, this.getIterAtOffset(i));
-			i++;
-			i = text.index_of(EntryImageAnchors.IMG_TAG_START, i);
+			var tagText = this.buffer.get_text(iIter, iEndIter, false);
+			Zystem.debug(tagText);
+
+			var relativePath = FileUtility.getPathFromImgTag(tagText);
+			var fullPath = relativePath.replace("..", UserData.djDirPath);
+			
+			if (tagText.has_prefix(EntryImageAnchors.IMG_TAG_START)
+			    && tagText.has_suffix(EntryImageAnchors.IMG_TAG_END)) {
+				
+				this.buffer.delete(ref iIter, ref iEndIter);
+				this.addImageAtIterForEntry(entry, textView, relativePath, fullPath, this.getIterAtOffset(i));
+				i++;
+				//i = text.index_of(EntryImageAnchors.IMG_TAG_START, i);
+				i = this.getOffsetForText(EntryImageAnchors.IMG_TAG_START, i);
+			} else {
+				Zystem.debug("Image tag not aligned with Iters, skipping all");
+				Zystem.debug(tagText);
+				break;
+			}
 		}
 		Zystem.debug("IMAGE FINDING TOTALLY COMPLETE");
 
 		this.connectSignals();
 	}
 
-	public void addImageAtIterForEntry(JournalEntry entry, TextView textView, string relativePath, string imgFilePath, TextIter imgIter) {
+	private void addImageAtIterForEntry(JournalEntry entry, TextView textView, string relativePath, string imgFilePath, 
+	                                    TextIter imgIter) {
 		Zystem.debug("GOING TO addImageAtIter " + imgIter.get_offset().to_string());
 
 		Zystem.debug(relativePath);

@@ -1,4 +1,4 @@
-Source: com.github.thejambi.DayJournal
+Source: com.github.thejambi.dayjournal
 Section: x11
 Priority: extra
 Maintainer: Zach Burnham <thejambi@gmail.com>
@@ -13,7 +13,7 @@ Build-Depends: cmake (>= 2.8), cmake-elementary, debhelper (>= 9),
  cmake (>= 2.8.7)
 Standards-Version: 3.9.3
 
-Package: com.github.thejambi.DayJournal
+Package: com.github.thejambi.dayjournal
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: DayJournal

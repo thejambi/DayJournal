@@ -1,4 +1,4 @@
-project (com.github.thejambi.DayJournal)
+project (com.github.thejambi.dayjournal)
 
 cmake_minimum_required (VERSION 2.6)
 
@@ -7,9 +7,9 @@ list (APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/src)
 
 set (DATADIR "${CMAKE_INSTALL_PREFIX}/share")
 
-set (PKGDATADIR "${DATADIR}/com.github.thejambi.DayJournal")
+set (PKGDATADIR "${DATADIR}/com.github.thejambi.dayjournal")
 
-set (EXEC_NAME "com.github.thejambi.DayJournal")
+set (EXEC_NAME "com.github.thejambi.dayjournal")
 set (RELEASE_NAME "DayJournal")
 set (VERSION "0.16.0")
 set (VERSION_INFO "Initial release")
@@ -63,16 +63,16 @@ add_executable(${EXEC_NAME} ${VALA_C})
 
 install (TARGETS ${EXEC_NAME} RUNTIME DESTINATION bin)
 
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/com.github.thejambi.DayJournal.desktop DESTINATION ${DATADIR}/applications/)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/com.github.thejambi.dayjournal.desktop DESTINATION ${DATADIR}/applications/)
 
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/com.github.thejambi.DayJournal.appdata.xml DESTINATION ${DATADIR}/metainfo/)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/com.github.thejambi.dayjournal.appdata.xml DESTINATION ${DATADIR}/metainfo/)
 
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/16/com.github.thejambi.DayJournal.png DESTINATION share/icons/hicolor/16x16/apps)
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/24/com.github.thejambi.DayJournal.png DESTINATION share/icons/hicolor/24x24/apps)
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/32/com.github.thejambi.DayJournal.png DESTINATION share/icons/hicolor/32x32/apps)
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/48/com.github.thejambi.DayJournal.png DESTINATION share/icons/hicolor/48x48/apps)
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/64/com.github.thejambi.DayJournal.png DESTINATION share/icons/hicolor/64x64/apps)
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/128/com.github.thejambi.DayJournal.png DESTINATION share/icons/hicolor/128x128/apps)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/16/com.github.thejambi.dayjournal.png DESTINATION share/icons/hicolor/16x16/apps)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/24/com.github.thejambi.dayjournal.png DESTINATION share/icons/hicolor/24x24/apps)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/32/com.github.thejambi.dayjournal.png DESTINATION share/icons/hicolor/32x32/apps)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/48/com.github.thejambi.dayjournal.png DESTINATION share/icons/hicolor/48x48/apps)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/64/com.github.thejambi.dayjournal.png DESTINATION share/icons/hicolor/64x64/apps)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/128/com.github.thejambi.dayjournal.png DESTINATION share/icons/hicolor/128x128/apps)
 
 # Translation files
 #set (GETTEXT_PACKAGE "${CMAKE_PROJECT_NAME}")

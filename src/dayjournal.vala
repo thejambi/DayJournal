@@ -951,7 +951,7 @@ public class Main : Window {
 		about.set_program_name("DayJournal");
 		about.comments = "A future-proof journal.";
 		about.website = "http://burnsoftware.wordpress.com/dayjournal";
-		about.logo_icon_name = "com.github.thejambi.DayJournal";
+		about.logo_icon_name = "com.github.thejambi.dayjournal";
 		about.set_copyright("by Zach Burnham");
 		about.run();
 		about.hide();

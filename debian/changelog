@@ -1,5 +1,5 @@
-com.github.thejambi.DayJournal (0.10) precise; urgency=medium
+com.github.thejambi.dayjournal (0.10) precise; urgency=medium
 
   * Preparing initial release to elementary OS AppCenter.
 
- -- Zach Burnham <zach@BurnhamicDesktop>  Thu, 20 Jul 2017 22:59:59 -0400
+ -- Zach Burnham <thejambi@gmail.com>  Thu, 20 Jul 2017 22:59:59 -0400

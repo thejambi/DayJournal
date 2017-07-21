@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=DayJournal
+GenericName=Plain-text journal
+Comment=A future-proof journal.
+Categories=GTK;Utility;
+Exec=com.github.thejambi.DayJournal
+Icon=com.github.thejambi.DayJournal
+Terminal=false
+Type=Application
+X-GNOME-Gettext-Domain=DayJournal
+Keywords=Day;Journal;Daily;Plain;Text;Diary;Note;Write;

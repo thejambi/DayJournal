@@ -23,9 +23,8 @@ using Gee;
 
 public class JournalArchiver : GLib.Object {
 
-	// Variables
-	public static const string TYPE_HTML = "html";
-	public static const string TYPE_TEXT = "txt";
+	public const string TYPE_HTML = "html";
+	public const string TYPE_TEXT = "txt";
 	
 	private Map<int, YearFolder> yearFolders;
 	public string archiveFilePath { get; private set; }
@@ -244,12 +243,10 @@ public class JournalArchiver : GLib.Object {
 	private void writeMonthlyEntriesToArchiveFile(MonthFolder monthFolder) {
 		// Get the path and File object
 		string path = this.getMonthlyArchiveFilePath();
-		Zystem.debug("Hello. The path is THISSSSSS: " + path);
+		Zystem.debug("Hello. The path is: " + path);
 		File file = File.new_for_path(path);
 		FileOutputStream fileStream = file.append_to(FileCreateFlags.NONE);
-
-		int x = 9 / 0;
-
+		
 		// Loop it!
 		foreach (Map.Entry<int, JournalEntry> entryEntry in monthFolder.entryMap.entries) {
 			Zystem.debug(entryEntry.value.day.to_string());

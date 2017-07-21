@@ -79,7 +79,6 @@ public class BlipLoader : GLib.Object {
 		this.dateBegin = new DateTime.from_unix_local(UserData.lastBlipLoadDate);
 
 		// Set dateEnd. It's this very moment.
-		// Let's try right now instead.
 		this.dateEnd = new DateTime.now_local();
 
 		Zystem.debug("BlipLoader begin: " + this.dateBegin.format("%Y/%m/%d %H:%M:%S"));
@@ -114,13 +113,11 @@ public class BlipLoader : GLib.Object {
 			this.loadAllBlipsInList();
 			Zystem.debug("Blip loading sequence complete.");
 			// Success, save date to settings
-			//UserData.setLastBlipLoadDateToYesterday();
 			if (this.numBlipsLoadedForToday > 0 && this.numBlipsLoaded > 0) {
 				Zystem.debug("Loaded blips for today");
 				UserData.setLastBlipLoadDate(this.lastLoadedBlipDate);
 			} else if (this.numBlipsLoaded > 0) {
 				Zystem.debug("Other blips before today were loaded");
-//				UserData.setLastBlipLoadDateToYesterday();
 				UserData.setLastBlipLoadDate(this.lastLoadedBlipDate);
 			}
 			if (this.numBlipsLoaded == 1) {

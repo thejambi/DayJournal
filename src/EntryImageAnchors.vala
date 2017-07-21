@@ -26,9 +26,9 @@ public class EntryImageAnchors : GLib.Object {
 
 	private GLib.List<ImageAnchorAndFile> imgList;
 
-	public static const string IMG_TAG_START = "<img class='dayjournalimage' src='";
-	public static const string IMG_TAG_END = "' />";
-	public static const string IMG_TAG_REGEX = EntryImageAnchors.IMG_TAG_START + ".*?" + EntryImageAnchors.IMG_TAG_END;
+	public const string IMG_TAG_START = "<img class='dayjournalimage' src='";
+	public const string IMG_TAG_END = "' />";
+	public const string IMG_TAG_REGEX = EntryImageAnchors.IMG_TAG_START + ".*?" + EntryImageAnchors.IMG_TAG_END;
 	
     // Constructor
     public EntryImageAnchors() {
@@ -53,7 +53,7 @@ public class EntryImageAnchors : GLib.Object {
 			TextChildAnchor anchor = imgAnchorFile.anchor;
 			if (anchor.get_deleted()) {
 				// Delete corresponding image file because it's deleted from entry
-				Zystem.debug("I am SOOOO removing this image and it's corresponding file. " + imgAnchorFile.fullPath);
+				Zystem.debug("Removing this image and it's corresponding file. " + imgAnchorFile.fullPath);
 				this.imgList.remove(imgAnchorFile);
 				imgAnchorFile.deleteFile();
 			} else {
@@ -148,9 +148,9 @@ public class ImageAnchorAndFile : GLib.Object, Comparable<ImageAnchorAndFile> {
 	public static bool test() {
 		bool theSame = (beforeText == afterText);
 		if (theSame) {
-			Zystem.debug("GOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOD JOB! EAT THE COOKIES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			Zystem.debug("GOOD");
 		} else {
-			Zystem.debug("D= :( :'( sad\n\n\nTHEY ARE NOT SAME\n\nFAIIIIL");
+			Zystem.debug("D= :( :'( sad");
 		}
 		return theSame;
 	}

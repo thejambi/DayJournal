@@ -28,6 +28,11 @@ public class Main : Window {
 	// SET THIS TO TRUE BEFORE BUILDING TARBALL
 	private const bool isInstalled = true;
 
+	/* This long between user stop typing and save of note file. */
+	private const int SAVE_AFTER_THIS_MANY_MILLISECONDS = 800;
+	private bool saveRequested = false;
+	private uint timerId;
+
 	private const string shortcutsText = 
 			"Ctrl+L: Go to next day\n" + 
 			"Ctrl+J: Go to previous day\n" + 
@@ -50,9 +55,6 @@ public class Main : Window {
 	private JournalEntry entry;
 	private TextView entryTextView;
 	
-//	private int startingFontSize;
-//	private int fontSize;
-	
 	private bool isOpening;
 	private bool needsSave = false;
 	private bool entryLocked = false;
@@ -65,8 +67,6 @@ public class Main : Window {
 	private Gtk.MenuItem menuCreateJournalArchive;
 	private Gtk.MenuItem menuClose;
 	private Gtk.Menu helpMenu;
-//	private Gtk.Menu menuKeyboardShortcuts;
-//	private Gtk.MenuItem menuAbout;
 	private Gtk.MenuToolButton openButton;
 	private Gtk.Menu openJournalsMenu;
 
@@ -87,21 +87,18 @@ public class Main : Window {
 	 */
 	public Main() {
 
-		//this.setUIFiles();
-
 		Zystem.debugOn = !isInstalled;
 
 		UserData.initializeUserData();
 
 		this.lastKeyName = "";
 
-		this.title = "DayJournal";  // Add location? Maybe that isn't as cool
+		this.title = "DayJournal";
 		var headerBar = new Gtk.HeaderBar();
 		headerBar.set_title("DayJournal");
 		headerBar.set_show_close_button(true);
 		this.set_titlebar(headerBar);
 		this.window_position = WindowPosition.CENTER;
-		//set_default_size (550, 430);
 		set_default_size(UserData.windowWidth, UserData.windowHeight);
 
 		this.configure_event.connect(() => {
@@ -135,11 +132,9 @@ public class Main : Window {
 
 		var journalMenuItem = new Gtk.MenuItem.with_label("DayJournal");
 		journalMenuItem.set_submenu(journalMenu);
-		//menubar.append(journalMenuItem);
 
 		// Set up Journals menu
 		this.journalsMenuItem = new Gtk.MenuItem.with_label("Journals");
-		//menubar.append(this.journalsMenuItem);
 
 		// Set up Settings menu
 		settingsMenu = new Gtk.Menu();
@@ -184,7 +179,6 @@ public class Main : Window {
 
 		var settingsMenuItem = new Gtk.MenuItem.with_label("Settings");
 		settingsMenuItem.set_submenu(settingsMenu);
-		//menubar.append(settingsMenuItem);
 
 		// Set up Help menu
 		helpMenu = new Gtk.Menu();
@@ -439,10 +433,9 @@ public class Main : Window {
 
 		this.entry.addImage(relativePath, fileDestPath, img, anchor, this.editor.buffer);
 
-//		this.entry.replaceImagesWithTags(this.editor.buffer);
-
 		this.needsSave = true;
-		this.autoSave();
+		//this.autoSave();  // Changing to requestSave
+		this.requestSave();
 	}
 
 	// Change for DayJournal
@@ -486,7 +479,7 @@ public class Main : Window {
 
 	private void setCurrentJournalAsImportJournalClicked(bool importSet) {
 		Zystem.debug("Import? " + UserData.importJournalPath);
-		Zystem.debug("HELLO THERE IMPORT SET TO " + importSet.to_string());
+		Zystem.debug("IMPORT SET TO " + importSet.to_string());
 		if (importSet) {
 			UserData.setCurrentJournalAsImportJournal();
 		} else {
@@ -531,7 +524,6 @@ public class Main : Window {
 
 	private async void callSave() {
 		try {
-			//yield this.entry.saveEntryFile(this.editor.getText());
 			yield this.entry.saveEntryFile(this.editor.buffer);
 			this.needsSave = false;
 		} catch (Error e) {
@@ -540,7 +532,6 @@ public class Main : Window {
 	}
 
 	private async void seldomSave() {
-//		Zystem.debug("THIS IS A SELDOM SAVE POINT AND needsSave is " + this.needsSave.to_string());
 		if (UserData.seldomSave && this.needsSave) {
 			this.callSave();
 		}
@@ -550,6 +541,29 @@ public class Main : Window {
 		if (!UserData.seldomSave) {
 			this.callSave();
 		}
+	}
+
+	private void requestSave() {
+		if (!this.saveRequested) {
+			this.timerId = Timeout.add(SAVE_AFTER_THIS_MANY_MILLISECONDS, onTimerEvent);
+			Zystem.debug("Set timer for SAVE!");
+		} else {
+			// Reset timer
+			Zystem.debug("Resetting SAVE timer");
+			Source.remove(this.timerId);
+			this.saveRequested = false;
+			this.requestSave();
+		}
+
+		this.saveRequested = true;
+	}
+
+	private bool onTimerEvent() {
+		this.saveRequested = false;
+		
+		this.autoSave();
+		
+		return false;
 	}
 
 	/**
@@ -564,6 +578,8 @@ public class Main : Window {
 				Zystem.debug("There was an error saving the file.");
 			}
 		}
+
+		this.saveIfNeeded();
 
 		if (!this.forgetUISettings) {
 			// Save window size
@@ -587,9 +603,26 @@ public class Main : Window {
 	public void onTextChanged(TextBuffer buffer) {
 		if (!this.isOpening) {
 			this.needsSave = true;
-			this.autoSave();
+			//this.autoSave();  // Changing to requestSave
+			this.requestSave();
 		} else {
 //			Zystem.debug("Not saving because we're only just opening the file. Saving now is dumb.");
+		}
+	}
+
+	public void saveIfNeeded() {
+		if (this.saveRequested && this.timerId != 0) {
+			Source.remove(this.timerId);
+			
+			this.saveNonAsync();
+		}
+	}
+
+	public void saveNonAsync() {
+		try {
+			this.entry.saveEntryFileNonAsync(this.editor.getText());
+		} catch (Error e) {
+			Zystem.debug("There was an error saving the file.");
 		}
 	}
 
@@ -601,8 +634,9 @@ public class Main : Window {
 
 		if (this.entry != null) {
 			this.seldomSave();
-//			Zystem.debug("Seldom save went swimmingly");
 		}
+
+		this.saveIfNeeded();
 
 		int year = this.calendar.year;
 		int month = this.calendar.month + 1;
@@ -744,26 +778,12 @@ public class Main : Window {
 		return false;
 	}
 
-	/**
-	 * 
-	 */
 	private void tryInsertEntrySection() {
 		if (this.entryLocked) {
-//			Zystem.debug("Entry is locked, cannot do that");
 			return;
 		}
 		
-		/*var dateTime = new DateTime.now_local();
-
-		if (this.entry.year == dateTime.get_year() && this.entry.month == dateTime.get_month() 
-													&& this.entry.day == dateTime.get_day_of_month()) {*/
-			this.editor.insertAtCursor(UserData.getNewEntrySectionText());
-			//this.seldomSave();
-		/*} else { 
-			Zystem.debug("THAT DID NOT WORK.");
-			Zystem.debug(this.entry.month.to_string());
-			Zystem.debug(dateTime.get_month().to_string());
-		}*/
+		this.editor.insertAtCursor(UserData.getNewEntrySectionText());
 	}
 
 	/**
@@ -787,7 +807,7 @@ public class Main : Window {
 	private void changeFontSize(int byThisMuch) {
 		int fontSize = this.getFontSize();
 		
-		// If font would be too small or too big, no way man
+		// Handle if font would be too small or too big
 		if (fontSize + byThisMuch < 6 || fontSize + byThisMuch > 50) {
 //			Zystem.debug("Not changing font size, because it would be: " + fontSize.to_string());
 			return;
@@ -914,11 +934,6 @@ public class Main : Window {
 		notification.show();
 	}
 
-	private void createJournalArchive() {
-		// TODO!
-		
-	}
-
 	private void loadBlips() {
 		if (UserData.currentJournalIsImportJournal()) {
 			BlipLoader blipLoader = new BlipLoader();
@@ -934,9 +949,9 @@ public class Main : Window {
 	private void menuAboutClicked() {
 		var about = new AboutDialog();
 		about.set_program_name("DayJournal");
-		about.comments = "Like typing on paper.";
+		about.comments = "A future-proof journal.";
 		about.website = "http://burnsoftware.wordpress.com/dayjournal";
-		about.logo_icon_name = "dayjournal";
+		about.logo_icon_name = "com.github.thejambi.DayJournal";
 		about.set_copyright("by Zach Burnham");
 		about.run();
 		about.hide();

@@ -23,7 +23,6 @@ using GLib;
 
 public class JournalEditor : Object {
 
-	// Variables
 	public TextBuffer buffer { get; private set; }
 
 	private int undoMax;
@@ -38,7 +37,6 @@ public class JournalEditor : Object {
 	 * Constructor for JournalEditor.
 	 */
 	public JournalEditor(TextBuffer buffer) {
-		//
 		this.buffer = buffer;
 
 		this.undoMax = 1000;
@@ -49,27 +47,18 @@ public class JournalEditor : Object {
 		this.connectSignals();
 	}
 
-	/*
-	 * Yep.
-	 */
 	private TextIter getStartIter() {
 		TextIter startIter;
 		this.buffer.get_start_iter(out startIter);
 		return startIter;
 	}
 
-	/*
-	 * Yep.
-	 */
 	private TextIter getEndIter() {
 		TextIter endIter;
 		this.buffer.get_end_iter(out endIter);
 		return endIter;
 	}
 
-	/*
-	 * Looks good now that it's way better.
-	 */
 	public string getText() {
 		return buffer.text;
 	}
@@ -93,11 +82,11 @@ public class JournalEditor : Object {
 	}
 
 	/*
-	 * Start working on a new entry. Sets the passed in text as the buffer text.
+	 * Start working on a new entry. Sets the passed in text as the buffer text and handles images.
 	 */
 	public void startNewEntry(string origText, TextView textView, JournalEntry entry) {
 		string text = origText;
-		/*ImageSaveChecker.beforeText = origText;*/
+		
 		this.undos.clear();
 		this.redos.clear();
 
@@ -107,22 +96,14 @@ public class JournalEditor : Object {
 
 		text = this.buffer.text;
 
-		int i = this.getOffsetForText(EntryImageAnchors.IMG_TAG_START, 0);//text.index_of(EntryImageAnchors.IMG_TAG_START, 0);
+		int i = this.getOffsetForText(EntryImageAnchors.IMG_TAG_START, 0);
 		int iEnd = 0;
 		while (i >= 0) {
-			//iEnd = text.index_of(EntryImageAnchors.IMG_TAG_END, i);
 			iEnd = this.getOffsetForText(EntryImageAnchors.IMG_TAG_END, i);
 
-			//var errorNess = iEnd - text.index_of(EntryImageAnchors.IMG_TAG_END, i);
 			// if iEnd < 0 that's bad
 			iEnd += EntryImageAnchors.IMG_TAG_END.length;
 			Zystem.debug("IMAGE FOUND AT " + i.to_string() + " to " + iEnd.to_string());
-			
-//			var relativePath = FileUtility.getPathFromImgTag(text.substring(i, iEnd - i));
-			//var relativePath = FileUtility.getPathFromImgTag(text.slice(i, iEnd));
-			//var fullPath = relativePath.replace("..", UserData.djDirPath);
-//			text = text.slice(i, iEnd);
-			//text = text.substring(0, i) + " " + text.substring(iEnd);
 			
 			var iIter = this.getIterAtOffset(i);
 			var iEndIter = this.getIterAtOffset(iEnd);
@@ -138,7 +119,6 @@ public class JournalEditor : Object {
 				this.buffer.delete(ref iIter, ref iEndIter);
 				this.addImageAtIterForEntry(entry, textView, relativePath, fullPath, this.getIterAtOffset(i));
 				i++;
-				//i = text.index_of(EntryImageAnchors.IMG_TAG_START, i);
 				i = this.getOffsetForText(EntryImageAnchors.IMG_TAG_START, i);
 			} else {
 				Zystem.debug("Image tag not aligned with Iters, skipping all");
@@ -146,15 +126,12 @@ public class JournalEditor : Object {
 				break;
 			}
 		}
-		Zystem.debug("IMAGE FINDING TOTALLY COMPLETE");
 
 		this.connectSignals();
 	}
 
 	private void addImageAtIterForEntry(JournalEntry entry, TextView textView, string relativePath, string imgFilePath, 
 	                                    TextIter imgIter) {
-		Zystem.debug("GOING TO addImageAtIter " + imgIter.get_offset().to_string());
-
 		Zystem.debug(relativePath);
 		Zystem.debug(imgFilePath);
 
@@ -166,9 +143,10 @@ public class JournalEditor : Object {
 		double w = pixbuf.width;
 		double h = pixbuf.height;
 
-		/*Zystem.debug("w " + w.to_string());
+		/*
+		Zystem.debug("w " + w.to_string());
 		Zystem.debug("h " + h.to_string());
-		Zystem.debug("wwwwwwwwwwwwwwwwwwwww ");*/
+		*/
 		
 		if (w > 400) {
 			double newH = (1 - ((w - 400) / w)) * h;
@@ -177,7 +155,7 @@ public class JournalEditor : Object {
 			var newPixbuf = pixbuf.scale_simple(400, (int)newH, Gdk.InterpType.BILINEAR);
 			img.set_from_pixbuf(newPixbuf);
 		} else if (h > 400) {
-			//
+			// Nothing
 		}
 		
 		textView.add_child_at_anchor(img, anchor);
@@ -186,26 +164,17 @@ public class JournalEditor : Object {
 		entry.addImage(relativePath, imgFilePath, img, anchor, this.buffer);
 	}
 
-	/*
-	 * This method is tested and WORKING.
-	 */
 	private TextIter getIterAtOffset(int offset) {
 		TextIter iter;
 		this.buffer.get_iter_at_offset(out iter, offset);
 		return iter;
 	}
 
-	/*
-	 * This method is tested and WORKING.
-	 */
 	public void append(string text) {
 		TextIter iter = this.getEndIter();
 		this.buffer.insert(ref iter, text, text.length);
 	}
 
-	/*
-	 * This method is tested and WORKING.
-	 */
 	public void prepend(string text) {
 		TextIter startIter = this.getStartIter();
 		this.buffer.insert(ref startIter, text, text.length);
@@ -217,24 +186,15 @@ public class JournalEditor : Object {
 		}
 	}
 
-	/**
-	 * 
-	 */
 	public void insertAtCursor(string text) {
 		TextIter startIter = this.getCurrentIter();
 		this.buffer.insert(ref startIter, text, text.length);
 	}
 
-	/*
-	 * Yep.
-	 */
 	public void cursorToEnd() {
 		this.buffer.place_cursor(this.getEndIter());
 	}
 
-	/*
-	 * Yep.
-	 */
 	public void cursorToStart() {
 		this.buffer.place_cursor(this.getStartIter());
 	}
@@ -338,9 +298,7 @@ public class JournalEditor : Object {
 	}
 
 	private void onInsertText(TextIter iter, string text, int length) {
-		//
-//		Zystem.debug("HEY THERE IT'S THE ONINSERTTEXT SPEAKING HERE: " + text);
-
+		
 		this.highlight();
 
 		Action cmd = new Action("delete", iter.get_offset(), text);

@@ -202,7 +202,7 @@ public class BlipData : GLib.Object {
 		//Zystem.debug("Entry contents: " + this.blipContents);
 		// If the blip is empty, then don't add it.
 		if (this.blipContents.strip() == "") {
-			Zystem.debug("EMPTY BLIIIIP I skip: " + this.dateTime.format("%Y/%m/%d %H:%M:%S"));
+			Zystem.debug("Skipping empty Blip: " + this.dateTime.format("%Y/%m/%d %H:%M:%S"));
 			return false;
 		}
 

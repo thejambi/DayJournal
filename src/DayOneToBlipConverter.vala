@@ -19,12 +19,12 @@ DayJournal is free software: you can redistribute it and/or modify it
 
 public class DayOneToBlipConverter : GLib.Object {
 
-	private static const string ENTRY_TEXT_KEY_TAG = "<key>Entry Text</key>";
-	private static const string STRING_TAG_START = "<string>";
-	private static const string STRING_TAG_END = "</string>";
-	private static const string CREATION_DATE_KEY_TAG = "<key>Creation Date</key>";
-	private static const string DATE_TAG_START = "<date>";
-	private static const string DATE_TAG_END = "</date>";
+	private const string ENTRY_TEXT_KEY_TAG = "<key>Entry Text</key>";
+	private const string STRING_TAG_START = "<string>";
+	private const string STRING_TAG_END = "</string>";
+	private const string CREATION_DATE_KEY_TAG = "<key>Creation Date</key>";
+	private const string DATE_TAG_START = "<date>";
+	private const string DATE_TAG_END = "</date>";
 
 	private string entryPath;
 	public BlipData blipData { get; private set; }
@@ -57,7 +57,7 @@ public class DayOneToBlipConverter : GLib.Object {
 			return;
 		}
 
-		Zystem.debug("DAY ONE PHOTO FOUND FOR THIS ENTRY!!!!!! AT " + photoPath);
+		Zystem.debug("DAY ONE PHOTO FOUND FOR THIS ENTRY! AT " + photoPath);
 
 		FileInfo photoInfo = photoFile.query_info("*",0);
 		string filename = photoInfo.get_name();

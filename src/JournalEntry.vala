@@ -22,7 +22,6 @@ using Gtk;
 
 public class JournalEntry : Object {
 
-	// Variables
 	string yearDirPath;
 	public string archiveRelativeMonthPath { get; private set; }
 	public string monthDirPath { get; private set; }
@@ -60,8 +59,6 @@ public class JournalEntry : Object {
 
 		this.archiveRelativeMonthPath = Path.build_path(Path.DIR_SEPARATOR_S, "..", year.to_string("%04i"), month.to_string("%02i"));
 
-		//Zystem.debug("JournalEntry object created for: " + this.filePath);
-
 		this.saveCounter = 0;
 
 		this.images = new EntryImageAnchors();
@@ -96,11 +93,7 @@ public class JournalEntry : Object {
 		var monthDir = File.new_for_path(this.monthDirPath);
 
 		string entryText = this.replaceImagesWithTags(buffer);
-/*
-		// ZLB
-		ImageSaveChecker.afterText = entryText;
-		ImageSaveChecker.test();
-		*/
+		
 		if (entryText == "") {
 			this.removeEntryFile();
 		} else {
@@ -113,7 +106,6 @@ public class JournalEntry : Object {
 	}
 
 	private async void saveFileContentsAsync(string entryText) throws GLib.Error {
-		//Zystem.debug("ACTUALLY SAVING FILE");
 		yield this.entryFile.replace_contents_async(entryText.data, null, false, FileCreateFlags.NONE, null, null);
 		//Zystem.debug("SAVE COUNTER IS: " + (++this.saveCounter).to_string());
 	}
@@ -142,7 +134,6 @@ public class JournalEntry : Object {
 	}
 
 	private void saveFileContents(string entryText) throws GLib.Error {
-		//Zystem.debug("ACTUALLY SAVING FILE");
 		this.entryFile.replace_contents(entryText.data, null, false, FileCreateFlags.NONE, null, null);
 		//Zystem.debug("SAVE COUNTER IS: " + (++this.saveCounter).to_string());
 	}
@@ -183,9 +174,6 @@ public class JournalEntry : Object {
 		}
 	}
 
-	/**
-	 * 
-	 */
 	public string getEntryDateHeading() {
 		return dateTime.format("%B %e, %Y\n\n");
 	}
